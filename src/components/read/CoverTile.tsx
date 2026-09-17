@@ -61,17 +61,22 @@ export function CoverTile({ book, onClick, onLongPress, wiggle, wiggleDelayMs = 
       onPointerUp={clearTimer}
       onPointerCancel={clearTimer}
       onClick={handleClick}
+      onContextMenu={(e) => e.preventDefault()}
       style={wiggle ? { animationDelay: `${wiggleDelayMs}ms` } : undefined}
-      className={`aspect-[2/3] w-full overflow-hidden rounded-md bg-hairline shadow-sm transition-transform active:scale-[0.98] ${
+      className={`aspect-[2/3] w-full select-none overflow-hidden rounded-md bg-hairline shadow-sm transition-transform [-webkit-touch-callout:none] active:scale-[0.98] ${
         wiggle ? 'animate-[wiggle_0.25s_ease-in-out_infinite]' : ''
       }`}
     >
       {book.coverUrl ? (
+        // pointer-events-none so the touch target is always this button, never the
+        // <img> itself — both iOS and Android only show their native long-press
+        // "save/copy image" menu when the touch actually lands on an <img>/<a>.
         <img
           src={book.coverUrl}
           alt=""
           loading="lazy"
-          className="h-full w-full object-cover"
+          draggable={false}
+          className="pointer-events-none h-full w-full object-cover"
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center p-2 text-center text-[11px] text-muted">
