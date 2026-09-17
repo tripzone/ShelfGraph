@@ -1,10 +1,14 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans:
     'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   --color-ink: #111111;
+  /** Text drawn on top of a `bg-ink` fill (buttons, toasts) — inverts opposite `ink`. */
+  --color-ink-inverse: #ffffff;
   --color-muted: #6b6b6b;
   --color-hairline: #e6e6e6;
   --color-canvas: #fafafa;
@@ -13,10 +17,30 @@
   --color-accent-soft: #dcfce7;
 }
 
+/* Every color above is a CSS variable, so re-pointing them here re-themes the whole
+   app without touching component classNames. */
+.dark {
+  --color-ink: #f2f2f2;
+  --color-ink-inverse: #111111;
+  --color-muted: #9a9a9a;
+  --color-hairline: #2a2a2a;
+  --color-canvas: #121212;
+  --color-surface: #1c1c1c;
+  --color-accent: #4ade80;
+  --color-accent-soft: #14532d;
+}
+
 html,
 body,
 #root {
   height: 100%;
+}
+
+:root {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
 }
 
 body {

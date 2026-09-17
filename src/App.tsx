@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { SearchBar } from './components/layout/SearchBar'
 import { TabBar } from './components/layout/TabBar'
+import { ThemeToggle } from './components/layout/ThemeToggle'
 import { SignInScreen } from './components/auth/SignInScreen'
 import { ReadGrid } from './components/read/ReadGrid'
 import { QueueList } from './components/toread/QueueList'
@@ -40,7 +41,10 @@ function AuthenticatedApp() {
   return (
     <div className="min-h-screen pb-16 sm:pb-0">
       <header className="sticky top-0 z-40 border-b border-hairline bg-surface/95 backdrop-blur">
-        <SearchBar uid={user.uid} />
+        <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-3">
+          <SearchBar uid={user.uid} />
+          <ThemeToggle />
+        </div>
       </header>
 
       <TabBar />

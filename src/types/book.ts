@@ -1,4 +1,5 @@
 export type BookStatus = 'read' | 'to-read'
+export type BookFormat = 'physical' | 'ebook' | 'audio'
 
 /** Metadata we cache once, so we never have to hit Google Books again for the same book. */
 export interface BookMetadata {
@@ -20,7 +21,9 @@ export interface BookMetadata {
 export interface UserBook extends BookMetadata {
   status: BookStatus
   rating: number | null
-  dateFinished: string | null // ISO date
+  finishedYear: number | null
+  finishedMonth: number | null // 1-12; only meaningful when finishedYear is set
+  format: BookFormat | null
   order: number
   propensityScore: number | null
   propensityRationale: string | null

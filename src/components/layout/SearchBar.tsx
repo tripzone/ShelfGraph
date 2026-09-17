@@ -25,7 +25,7 @@ export function SearchBar({ uid }: { uid: string | undefined }) {
   }
 
   return (
-    <div ref={containerRef} className="relative mx-auto w-full max-w-3xl px-4 py-3">
+    <div ref={containerRef} className="relative w-full">
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}

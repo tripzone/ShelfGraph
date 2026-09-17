@@ -11,7 +11,7 @@ export function SignInScreen() {
       </div>
       <button
         onClick={() => signInWithGoogle()}
-        className="rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white shadow-sm"
+        className="rounded-full bg-ink px-6 py-3 text-sm font-semibold text-ink-inverse shadow-sm"
       >
         Continue with Google
       </button>

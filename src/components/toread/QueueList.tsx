@@ -91,7 +91,7 @@ export function QueueList({ uid }: { uid: string | undefined }) {
                   await moveToRead(selected.googleVolumeId)
                   setSelectedId(null)
                 }}
-                className="flex-1 rounded-full bg-ink py-3 text-sm font-semibold text-white"
+                className="flex-1 rounded-full bg-ink py-3 text-sm font-semibold text-ink-inverse"
               >
                 ✓ Mark as Read
               </button>

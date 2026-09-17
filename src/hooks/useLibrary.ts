@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { subscribeToBooksByStatus, updateUserBook } from '../firebase/firestore'
+import { reorderBooks, subscribeToBooksByStatus, updateUserBook } from '../firebase/firestore'
 import type { UserBook } from '../types/book'
 
 /** Books with status='read' — the Tab 1 archive. */
@@ -26,5 +26,15 @@ export function useLibrary(uid: string | undefined) {
     await updateUserBook(uid, volumeId, { rating })
   }
 
-  return { books, loading, rateBook }
+  async function reorder(orderedVolumeIds: string[]) {
+    if (!uid) return
+    // Optimistic local reorder so drag feels instant; onSnapshot reconciles after.
+    setBooks((prev) => {
+      const byId = new Map(prev.map((b) => [b.googleVolumeId, b]))
+      return orderedVolumeIds.map((id, index) => ({ ...byId.get(id)!, order: index }))
+    })
+    await reorderBooks(uid, orderedVolumeIds)
+  }
+
+  return { books, loading, rateBook, reorder }
 }

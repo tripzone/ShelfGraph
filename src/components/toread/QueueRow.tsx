@@ -16,7 +16,7 @@ export function QueueRow({ book, onClick }: { book: UserBook; onClick: () => voi
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 border-b border-hairline bg-surface px-2 py-2 ${
+      className={`flex items-center gap-3 border-b border-hairline bg-surface px-2 py-3 ${
         isDragging ? 'z-10 opacity-90 shadow-md' : ''
       }`}
     >
@@ -24,13 +24,13 @@ export function QueueRow({ book, onClick }: { book: UserBook; onClick: () => voi
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
-        className="flex h-8 w-6 shrink-0 touch-none items-center justify-center text-muted"
+        className="flex h-12 w-9 shrink-0 touch-none items-center justify-center text-muted"
       >
         ⠿
       </button>
 
       <button onClick={onClick} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-        <div className="h-12 w-8 shrink-0 overflow-hidden rounded bg-hairline">
+        <div className="h-[72px] w-12 shrink-0 overflow-hidden rounded bg-hairline">
           {book.coverUrl && (
             <img src={book.coverUrl} alt="" className="h-full w-full object-cover" />
           )}

@@ -67,7 +67,7 @@ export function RecommendationGrid({ uid }: { uid: string | undefined }) {
                   setSelectedId(null)
                   pushToast('Marked as Read')
                 }}
-                className="flex-1 rounded-full bg-ink py-3 text-sm font-semibold text-white"
+                className="flex-1 rounded-full bg-ink py-3 text-sm font-semibold text-ink-inverse"
               >
                 ✓ Mark as Read
               </button>

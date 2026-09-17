@@ -1,7 +1,7 @@
 import { addBookToLibrary, removeUserBook, updateUserBook } from '../firebase/firestore'
 import { scoreBook } from '../firebase/functions'
 import { uploadCustomCover } from '../firebase/storage'
-import type { BookMetadata } from '../types/book'
+import type { BookFormat, BookMetadata } from '../types/book'
 
 /** Add/remove/mark-read actions shared by the search sheet and detail modal. */
 export function useLibraryActions(uid: string | undefined) {
@@ -19,7 +19,7 @@ export function useLibraryActions(uid: string | undefined) {
 
   async function moveToRead(volumeId: string) {
     if (!uid) return
-    await updateUserBook(uid, volumeId, { status: 'read', dateFinished: new Date().toISOString() })
+    await updateUserBook(uid, volumeId, { status: 'read' })
   }
 
   async function removeBook(volumeId: string) {
@@ -38,5 +38,24 @@ export function useLibraryActions(uid: string | undefined) {
     await updateUserBook(uid, volumeId, { coverUrl: defaultCoverUrl })
   }
 
-  return { addToQueue, markAsRead, moveToRead, removeBook, changeCover, resetCover }
+  async function setFinishedDate(volumeId: string, year: number | null, month: number | null) {
+    if (!uid) return
+    await updateUserBook(uid, volumeId, { finishedYear: year, finishedMonth: month })
+  }
+
+  async function setFormat(volumeId: string, format: BookFormat | null) {
+    if (!uid) return
+    await updateUserBook(uid, volumeId, { format })
+  }
+
+  return {
+    addToQueue,
+    markAsRead,
+    moveToRead,
+    removeBook,
+    changeCover,
+    resetCover,
+    setFinishedDate,
+    setFormat,
+  }
 }

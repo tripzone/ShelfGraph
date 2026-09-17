@@ -29,7 +29,7 @@ function ToastItem({
   }, [id, onDismiss])
 
   return (
-    <div className="pointer-events-auto animate-[fade-in_150ms_ease-out] rounded-full bg-ink px-4 py-2 text-sm font-medium text-white shadow-lg">
+    <div className="pointer-events-auto animate-[fade-in_150ms_ease-out] rounded-full bg-ink px-4 py-2 text-sm font-medium text-ink-inverse shadow-lg">
       {message}
     </div>
   )

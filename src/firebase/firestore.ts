@@ -14,11 +14,22 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db } from './config'
-import type { BookMetadata, BookStatus, RecommendedBook, UserBook } from '../types/book'
+import type { BookFormat, BookMetadata, BookStatus, RecommendedBook, UserBook } from '../types/book'
 
 function toIso(value: unknown): string | null {
   if (value instanceof Timestamp) return value.toDate().toISOString()
   return null
+}
+
+/** Docs written before the year/month picker only have a `dateFinished` timestamp. */
+function legacyFinishedParts(data: Record<string, unknown>): {
+  finishedYear: number | null
+  finishedMonth: number | null
+} {
+  const legacy = data.dateFinished
+  const date = legacy instanceof Timestamp ? legacy.toDate() : null
+  if (!date) return { finishedYear: null, finishedMonth: null }
+  return { finishedYear: date.getFullYear(), finishedMonth: date.getMonth() + 1 }
 }
 
 function booksCol(uid: string) {
@@ -30,6 +41,8 @@ function recommendationsCol(uid: string) {
 }
 
 function fromDoc(id: string, data: Record<string, unknown>): UserBook {
+  const hasFinishedYear = typeof data.finishedYear === 'number'
+  const legacy = hasFinishedYear ? null : legacyFinishedParts(data)
   return {
     googleVolumeId: id,
     title: data.title as string,
@@ -45,11 +58,13 @@ function fromDoc(id: string, data: Record<string, unknown>): UserBook {
     isbn: (data.isbn as string | null) ?? null,
     status: data.status as BookStatus,
     rating: (data.rating as number | null) ?? null,
-    dateFinished: (data.dateFinished as string | null) ?? toIso(data.dateFinished),
+    finishedYear: hasFinishedYear ? (data.finishedYear as number) : (legacy!.finishedYear),
+    finishedMonth: hasFinishedYear ? ((data.finishedMonth as number | null) ?? null) : (legacy!.finishedMonth),
+    format: (data.format as BookFormat | null) ?? null,
     order: (data.order as number) ?? 0,
     propensityScore: (data.propensityScore as number | null) ?? null,
     propensityRationale: (data.propensityRationale as string | null) ?? null,
-    addedAt: (data.addedAt as string) ?? toIso(data.addedAt) ?? new Date().toISOString(),
+    addedAt: typeof data.addedAt === 'string' ? data.addedAt : toIso(data.addedAt) ?? new Date().toISOString(),
   }
 }
 
@@ -58,10 +73,7 @@ export function subscribeToBooksByStatus(
   status: BookStatus,
   callback: (books: UserBook[]) => void,
 ) {
-  const q =
-    status === 'to-read'
-      ? query(booksCol(uid), where('status', '==', status), orderBy('order', 'asc'))
-      : query(booksCol(uid), where('status', '==', status))
+  const q = query(booksCol(uid), where('status', '==', status), orderBy('order', 'asc'))
   return onSnapshot(q, (snapshot) => {
     callback(snapshot.docs.map((d) => fromDoc(d.id, d.data())))
   })
@@ -118,7 +130,9 @@ export async function addBookToLibrary(
     ...metadata,
     status,
     rating: null,
-    dateFinished: status === 'read' ? serverTimestamp() : null,
+    finishedYear: null,
+    finishedMonth: null,
+    format: null,
     order,
     propensityScore: null,
     propensityRationale: null,
@@ -129,7 +143,12 @@ export async function addBookToLibrary(
 export async function updateUserBook(
   uid: string,
   volumeId: string,
-  patch: Partial<Pick<UserBook, 'rating' | 'status' | 'order' | 'dateFinished' | 'coverUrl'>>,
+  patch: Partial<
+    Pick<
+      UserBook,
+      'rating' | 'status' | 'order' | 'finishedYear' | 'finishedMonth' | 'format' | 'coverUrl'
+    >
+  >,
 ) {
   await updateDoc(doc(booksCol(uid), volumeId), { ...patch })
 }
@@ -138,7 +157,8 @@ export async function removeUserBook(uid: string, volumeId: string) {
   await deleteDoc(doc(booksCol(uid), volumeId))
 }
 
-export async function reorderQueue(uid: string, orderedVolumeIds: string[]) {
+/** Persists a manual drag-reorder for either tab's book list. */
+export async function reorderBooks(uid: string, orderedVolumeIds: string[]) {
   const batch = writeBatch(db)
   orderedVolumeIds.forEach((id, index) => {
     batch.update(doc(booksCol(uid), id), { order: index })

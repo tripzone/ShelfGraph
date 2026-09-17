@@ -1,9 +1,28 @@
 import { useRef, useState, type ReactNode } from 'react'
-import type { BookMetadata } from '../../types/book'
+import type { BookFormat, BookMetadata } from '../../types/book'
+
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+
+const FORMATS: BookFormat[] = ['physical', 'ebook', 'audio']
 
 interface DetailModalBook extends BookMetadata {
   rating?: number | null
-  dateFinished?: string | null
+  finishedYear?: number | null
+  finishedMonth?: number | null
+  format?: BookFormat | null
   propensityScore?: number | null
   propensityRationale?: string | null
 }
@@ -16,6 +35,10 @@ interface DetailModalProps {
   onChangeCover?: (file: File) => Promise<void>
   /** When provided and the cover differs from `defaultCoverUrl`, shows a "Reset" action. */
   onResetCover?: () => Promise<void>
+  /** When provided, shows the year/month "finished" picker (Read tab only). */
+  onSetFinishedDate?: (year: number | null, month: number | null) => Promise<void>
+  /** When provided, shows the Physical/Ebook/Audio format selector (Read tab only). */
+  onSetFormat?: (format: BookFormat | null) => Promise<void>
   footer?: ReactNode
 }
 
@@ -25,12 +48,30 @@ export function DetailModal({
   onRate,
   onChangeCover,
   onResetCover,
+  onSetFinishedDate,
+  onSetFormat,
   footer,
 }: DetailModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [coverBusy, setCoverBusy] = useState(false)
   const [coverError, setCoverError] = useState<string | null>(null)
+  const [descExpanded, setDescExpanded] = useState(false)
   const hasCustomCover = book.coverUrl && book.coverUrl !== book.defaultCoverUrl
+  const currentYear = new Date().getFullYear()
+  const yearOptions = Array.from({ length: 101 }, (_, i) => currentYear - i)
+
+  async function handleYearChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (!onSetFinishedDate) return
+    const year = e.target.value ? Number(e.target.value) : null
+    // Clearing the year also clears the month — month can't stand alone.
+    await onSetFinishedDate(year, year ? (book.finishedMonth ?? null) : null)
+  }
+
+  async function handleMonthChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (!onSetFinishedDate) return
+    const month = e.target.value ? Number(e.target.value) : null
+    await onSetFinishedDate(book.finishedYear ?? null, month)
+  }
 
   async function handleCoverFile(file: File | undefined) {
     if (!file || !onChangeCover) return
@@ -112,7 +153,9 @@ export function DetailModal({
                   Reset cover
                 </button>
               )}
-              {coverError && <p className="mt-1 text-[11px] text-red-600">{coverError}</p>}
+              {coverError && (
+                <p className="mt-1 text-[11px] text-red-600 dark:text-red-400">{coverError}</p>
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-semibold leading-tight text-ink">{book.title}</h2>
@@ -142,10 +185,59 @@ export function DetailModal({
                 </div>
               )}
 
-              {book.dateFinished && (
-                <p className="mt-2 text-xs text-muted">
-                  Finished {new Date(book.dateFinished).toLocaleDateString()}
-                </p>
+              {onSetFinishedDate && (
+                <div className="mt-3">
+                  <p className="mb-1 text-xs text-muted">Finished</p>
+                  <div className="flex gap-1.5">
+                    <select
+                      value={book.finishedYear ?? ''}
+                      onChange={(e) => void handleYearChange(e)}
+                      className="rounded-md border border-hairline bg-surface px-1.5 py-1 text-xs text-ink"
+                    >
+                      <option value="">—</option>
+                      {yearOptions.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={book.finishedMonth ?? ''}
+                      onChange={(e) => void handleMonthChange(e)}
+                      disabled={!book.finishedYear}
+                      className="rounded-md border border-hairline bg-surface px-1.5 py-1 text-xs text-ink disabled:opacity-40"
+                    >
+                      <option value="">—</option>
+                      {MONTH_NAMES.map((name, i) => (
+                        <option key={name} value={i + 1}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {onSetFormat && (
+                <div className="mt-3">
+                  <p className="mb-1 text-xs text-muted">Format</p>
+                  <div className="flex gap-1.5">
+                    {FORMATS.map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => void onSetFormat(book.format === f ? null : f)}
+                        className={`rounded-full border px-2.5 py-1 text-xs font-medium capitalize ${
+                          book.format === f
+                            ? 'border-ink bg-ink text-ink-inverse'
+                            : 'border-hairline text-ink'
+                        }`}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
 
               {book.propensityScore != null && (
@@ -166,9 +258,22 @@ export function DetailModal({
           )}
 
           {book.description && (
-            <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-ink/80">
-              {book.description}
-            </p>
+            <div className="mt-4">
+              <p
+                className={`whitespace-pre-line text-sm leading-relaxed text-ink/80 ${
+                  descExpanded ? '' : 'line-clamp-5'
+                }`}
+              >
+                {book.description}
+              </p>
+              <button
+                type="button"
+                onClick={() => setDescExpanded((v) => !v)}
+                className="mt-1 text-sm font-medium text-ink underline underline-offset-2"
+              >
+                {descExpanded ? 'Show less' : 'Read more'}
+              </button>
+            </div>
           )}
 
           <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
