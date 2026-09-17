@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Autocomplete } from '../search/Autocomplete'
+import { CreateBookModal } from '../search/CreateBookModal'
 import { useBookSearch } from '../../hooks/useBookSearch'
 import { useLibraryActions } from '../../hooks/useLibraryActions'
 import { useUiStore } from '../../store/uiStore'
@@ -8,6 +9,7 @@ import type { BookMetadata } from '../../types/book'
 export function SearchBar({ uid }: { uid: string | undefined }) {
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(false)
+  const [creatingCustom, setCreatingCustom] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const { results, loading, error } = useBookSearch(query)
   const { addToQueue, markAsRead } = useLibraryActions(uid)
@@ -19,12 +21,24 @@ export function SearchBar({ uid }: { uid: string | undefined }) {
     setFocused(false)
   }
 
+  function handleOpenCreateCustom() {
+    setCreatingCustom(true)
+    setFocused(false)
+  }
+
+  function handleCreateCustom(book: BookMetadata) {
+    setCreatingCustom(false)
+    openSheet(book)
+  }
+
   async function handleQuickAdd(book: BookMetadata) {
+    setFocused(false)
     await addToQueue(book)
     pushToast('Added to Queue')
   }
 
   async function handleQuickMarkRead(book: BookMetadata) {
+    setFocused(false)
     await markAsRead(book)
     pushToast('Marked as Read')
   }
@@ -57,7 +71,14 @@ export function SearchBar({ uid }: { uid: string | undefined }) {
           onSelectRow={handleSelectRow}
           onQuickAdd={handleQuickAdd}
           onQuickMarkRead={handleQuickMarkRead}
-          onCreateCustom={handleSelectRow}
+          onOpenCreateCustom={handleOpenCreateCustom}
+        />
+      )}
+      {creatingCustom && (
+        <CreateBookModal
+          initialTitle={query}
+          onClose={() => setCreatingCustom(false)}
+          onCreate={handleCreateCustom}
         />
       )}
     </div>
