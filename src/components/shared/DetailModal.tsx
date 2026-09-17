@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { GenreCombobox } from './GenreCombobox'
 import type { EditableBookDetails } from '../../hooks/useLibraryActions'
 import type { BookFormat, BookMetadata } from '../../types/book'
@@ -45,8 +45,16 @@ interface DetailModalProps {
   onSaveDetails?: (details: EditableBookDetails) => Promise<void>
   /** Existing genres across the user's catalogue, offered in the genre field while editing. */
   genres?: string[]
+  /** A full-width primary action (e.g. "Mark as Read"), rendered above the icon row. */
+  primaryAction?: ReactNode
   footer?: ReactNode
+  /** When provided, left-arrow key / right-swipe shows the previous book in the current list. */
+  onPrevious?: () => void
+  /** When provided, right-arrow key / left-swipe shows the next book in the current list. */
+  onNext?: () => void
 }
+
+const SWIPE_THRESHOLD_PX = 60
 
 export function DetailModal({
   book,
@@ -58,9 +66,13 @@ export function DetailModal({
   onSetFormat,
   onSaveDetails,
   genres = [],
+  primaryAction,
   footer,
+  onPrevious,
+  onNext,
 }: DetailModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
   const [coverBusy, setCoverBusy] = useState(false)
   const [coverError, setCoverError] = useState<string | null>(null)
   const [descExpanded, setDescExpanded] = useState(false)
@@ -79,6 +91,37 @@ export function DetailModal({
   const [publisherInput, setPublisherInput] = useState(book.publisher ?? '')
   const [publishedDateInput, setPublishedDateInput] = useState(book.publishedDate ?? '')
   const [descriptionInput, setDescriptionInput] = useState(book.description)
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (editing) return
+      const tag = (e.target as HTMLElement | null)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (e.key === 'ArrowLeft') onPrevious?.()
+      else if (e.key === 'ArrowRight') onNext?.()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [editing, onPrevious, onNext])
+
+  function handleTouchStart(e: React.TouchEvent) {
+    const touch = e.touches[0]
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY }
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    const start = touchStartRef.current
+    touchStartRef.current = null
+    if (!start || editing) return
+    const touch = e.changedTouches[0]
+    const dx = touch.clientX - start.x
+    const dy = touch.clientY - start.y
+    // Require a mostly-horizontal drag so vertical scrolling (e.g. the description) never
+    // gets mistaken for a swipe.
+    if (Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) < Math.abs(dy) * 1.5) return
+    if (dx < 0) onNext?.()
+    else onPrevious?.()
+  }
 
   function startEditing() {
     setTitleInput(book.title)
@@ -158,7 +201,11 @@ export function DetailModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/40" />
 
-      <div className="relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-surface shadow-2xl">
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="relative flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-surface shadow-2xl"
+      >
         <button
           onClick={onClose}
           aria-label="Close"
@@ -433,8 +480,9 @@ export function DetailModal({
             </div>
           </div>
         ) : (
-          (onSaveDetails || footer) && (
-            <div className="shrink-0 border-t border-hairline p-3">
+          (primaryAction || onSaveDetails || footer) && (
+            <div className="shrink-0 space-y-2 border-t border-hairline p-3">
+              {primaryAction}
               <div className="flex justify-center gap-2">
                 {onSaveDetails && (
                   <button

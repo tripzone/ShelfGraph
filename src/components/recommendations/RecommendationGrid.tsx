@@ -13,9 +13,12 @@ export function RecommendationGrid({ uid }: { uid: string | undefined }) {
   const selected = books.find((b) => b.googleVolumeId === selectedId) ?? null
 
   return (
-    <div className="mx-auto max-w-3xl px-1 pb-24 sm:px-4">
+    <div className="mx-auto max-w-3xl px-1 sm:px-4">
       <div className="flex items-center justify-between px-2 py-3">
-        <p className="text-xs text-muted">Based on what you've rated highly</p>
+        <div>
+          <h2 className="text-sm font-semibold text-ink">AI Recommendations</h2>
+          <p className="text-xs text-muted">Based on what you've rated highly</p>
+        </div>
         <button
           onClick={refresh}
           disabled={refreshing}

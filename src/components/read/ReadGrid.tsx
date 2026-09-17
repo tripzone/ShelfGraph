@@ -10,7 +10,7 @@ import {
 import { SortableContext, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable'
 import { CoverTile } from './CoverTile'
 import { SortableCoverTile } from './SortableCoverTile'
-import { ReadToolbar, type SortMode } from './ReadToolbar'
+import { ReadToolbar, type SortDirection, type SortMode } from './ReadToolbar'
 import { DetailModal } from '../shared/DetailModal'
 import { useLibrary } from '../../hooks/useLibrary'
 import { useLibraryActions } from '../../hooks/useLibraryActions'
@@ -19,6 +19,7 @@ import { useGridSize, type GridSize } from '../../hooks/useGridSize'
 import type { BookFormat, UserBook } from '../../types/book'
 
 const GRID_BASE_CLASSES = 'mx-auto grid max-w-3xl gap-1 px-1 pb-24 sm:gap-2 sm:px-4'
+const GROUP_GRID_BASE_CLASSES = 'grid gap-1 sm:gap-2'
 
 const GRID_SIZE_CLASSES: Record<GridSize, string> = {
   xs: 'grid-cols-5 sm:grid-cols-7',
@@ -38,11 +39,13 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
     useLibraryActions(uid)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sortMode, setSortMode] = useState<SortMode>('custom')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [genreFilter, setGenreFilter] = useState<Set<string>>(new Set())
   const [formatFilter, setFormatFilter] = useState<Set<BookFormat>>(new Set())
   const [reorderMode, setReorderMode] = useState(false)
   const { gridSize, setGridSize } = useGridSize()
   const gridClasses = `${GRID_BASE_CLASSES} ${GRID_SIZE_CLASSES[gridSize]}`
+  const groupGridClasses = `${GROUP_GRID_BASE_CLASSES} ${GRID_SIZE_CLASSES[gridSize]}`
   const catalogueGenres = useCatalogueGenres(uid)
 
   const selected = books.find((b) => b.googleVolumeId === selectedId) ?? null
@@ -54,6 +57,15 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
 
   const filtersActive = genreFilter.size > 0 || formatFilter.size > 0
 
+  function handleSortModeChange(mode: SortMode) {
+    if (mode === sortMode) {
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
+      return
+    }
+    setSortMode(mode)
+    setSortDirection('asc')
+  }
+
   const visibleBooks = useMemo(() => {
     let list = books
     if (genreFilter.size > 0) {
@@ -63,18 +75,19 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
       list = list.filter((b) => b.format && formatFilter.has(b.format))
     }
 
+    const dir = sortDirection === 'asc' ? 1 : -1
     const sorted = [...list]
     switch (sortMode) {
       case 'title':
-        sorted.sort((a, b) => a.title.localeCompare(b.title))
+        sorted.sort((a, b) => dir * a.title.localeCompare(b.title))
         break
       case 'date':
-        sorted.sort((a, b) => dateKey(b) - dateKey(a) || a.title.localeCompare(b.title))
+        sorted.sort((a, b) => dir * (dateKey(a) - dateKey(b)) || a.title.localeCompare(b.title))
         break
       case 'genre':
         sorted.sort(
           (a, b) =>
-            (a.categories[0] ?? '').localeCompare(b.categories[0] ?? '') ||
+            dir * (a.categories[0] ?? '').localeCompare(b.categories[0] ?? '') ||
             a.title.localeCompare(b.title),
         )
         break
@@ -84,7 +97,21 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
         sorted.sort((a, b) => a.order - b.order || a.addedAt.localeCompare(b.addedAt))
     }
     return sorted
-  }, [books, sortMode, genreFilter, formatFilter])
+  }, [books, sortMode, sortDirection, genreFilter, formatFilter])
+
+  // Genre headings only make sense once the list is grouped/sorted by genre — grouping
+  // by iteration order works because visibleBooks is already sorted (genre, then title).
+  const genreGroups = useMemo(() => {
+    if (sortMode !== 'genre') return null
+    const groups = new Map<string, UserBook[]>()
+    for (const book of visibleBooks) {
+      const key = book.categories[0] || 'Uncategorized'
+      const group = groups.get(key)
+      if (group) group.push(book)
+      else groups.set(key, [book])
+    }
+    return Array.from(groups.entries())
+  }, [visibleBooks, sortMode])
 
   const reorderCapable = sortMode === 'custom' && !filtersActive
   const dragEnabled = reorderCapable && reorderMode
@@ -101,6 +128,16 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
       return
     }
     setSelectedId(book.googleVolumeId)
+  }
+
+  const selectedIndex = selectedId
+    ? visibleBooks.findIndex((b) => b.googleVolumeId === selectedId)
+    : -1
+
+  function handleNavigate(direction: -1 | 1) {
+    if (selectedIndex === -1) return
+    const nextBook = visibleBooks[selectedIndex + direction]
+    if (nextBook) setSelectedId(nextBook.googleVolumeId)
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -120,7 +157,8 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
     <>
       <ReadToolbar
         sortMode={sortMode}
-        onSortModeChange={setSortMode}
+        sortDirection={sortDirection}
+        onSortModeChange={handleSortModeChange}
         genres={genres}
         genreFilter={genreFilter}
         onGenreFilterChange={setGenreFilter}
@@ -160,6 +198,19 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
             </div>
           </SortableContext>
         </DndContext>
+      ) : genreGroups ? (
+        <div className="mx-auto max-w-3xl px-1 pb-24 sm:px-4">
+          {genreGroups.map(([genre, groupBooks]) => (
+            <div key={genre} className="mb-6 last:mb-0">
+              <h3 className="mb-1.5 px-1 text-sm font-semibold text-ink sm:px-1">{genre}</h3>
+              <div className={groupGridClasses}>
+                {groupBooks.map((book) => (
+                  <CoverTile key={book.googleVolumeId} book={book} onClick={() => handleTileTap(book)} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className={gridClasses}>
           {visibleBooks.map((book) => (
@@ -184,6 +235,12 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
           onSetFormat={(format) => setFormat(selected.googleVolumeId, format)}
           onSaveDetails={(details) => updateDetails(selected.googleVolumeId, details)}
           genres={catalogueGenres}
+          onPrevious={selectedIndex > 0 ? () => handleNavigate(-1) : undefined}
+          onNext={
+            selectedIndex !== -1 && selectedIndex < visibleBooks.length - 1
+              ? () => handleNavigate(1)
+              : undefined
+          }
           footer={
             <button
               onClick={async () => {

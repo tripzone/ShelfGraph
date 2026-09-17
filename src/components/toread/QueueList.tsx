@@ -16,12 +16,21 @@ import { QueueRow } from './QueueRow'
 import { DetailModal } from '../shared/DetailModal'
 import { useQueue } from '../../hooks/useQueue'
 import { useLibraryActions } from '../../hooks/useLibraryActions'
+import { useCatalogueGenres } from '../../hooks/useCatalogueGenres'
 
 export function QueueList({ uid }: { uid: string | undefined }) {
   const { books, loading, reorder } = useQueue(uid)
-  const { moveToRead, removeBook, changeCover, resetCover } = useLibraryActions(uid)
+  const { moveToRead, removeBook, changeCover, resetCover, updateDetails } = useLibraryActions(uid)
+  const catalogueGenres = useCatalogueGenres(uid)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = books.find((b) => b.googleVolumeId === selectedId) ?? null
+  const selectedIndex = selectedId ? books.findIndex((b) => b.googleVolumeId === selectedId) : -1
+
+  function handleNavigate(direction: -1 | 1) {
+    if (selectedIndex === -1) return
+    const nextBook = books[selectedIndex + direction]
+    if (nextBook) setSelectedId(nextBook.googleVolumeId)
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -75,27 +84,51 @@ export function QueueList({ uid }: { uid: string | undefined }) {
           onClose={() => setSelectedId(null)}
           onChangeCover={(file) => changeCover(selected.googleVolumeId, file)}
           onResetCover={() => resetCover(selected.googleVolumeId, selected.defaultCoverUrl)}
+          onSaveDetails={(details) => updateDetails(selected.googleVolumeId, details)}
+          genres={catalogueGenres}
+          onPrevious={selectedIndex > 0 ? () => handleNavigate(-1) : undefined}
+          onNext={
+            selectedIndex !== -1 && selectedIndex < books.length - 1
+              ? () => handleNavigate(1)
+              : undefined
+          }
+          primaryAction={
+            <button
+              onClick={async () => {
+                await moveToRead(selected.googleVolumeId)
+                setSelectedId(null)
+              }}
+              className="w-full rounded-full border border-hairline py-3 text-sm font-semibold text-ink"
+            >
+              ✓ Mark as Read
+            </button>
+          }
           footer={
-            <div className="flex gap-2">
-              <button
-                onClick={async () => {
-                  await removeBook(selected.googleVolumeId)
-                  setSelectedId(null)
-                }}
-                className="flex-1 rounded-full border border-hairline py-3 text-sm font-semibold text-ink"
+            <button
+              onClick={async () => {
+                await removeBook(selected.googleVolumeId)
+                setSelectedId(null)
+              }}
+              aria-label="Remove from Queue"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-hairline text-ink"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
               >
-                Remove
-              </button>
-              <button
-                onClick={async () => {
-                  await moveToRead(selected.googleVolumeId)
-                  setSelectedId(null)
-                }}
-                className="flex-1 rounded-full border border-hairline py-3 text-sm font-semibold text-ink"
-              >
-                ✓ Mark as Read
-              </button>
-            </div>
+                <path d="M3 6h18" />
+                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                <path d="M10 11v6" />
+                <path d="M14 11v6" />
+              </svg>
+            </button>
           }
         />
       )}

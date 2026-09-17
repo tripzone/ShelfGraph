@@ -2,12 +2,34 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+    function isPublicProfile(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.isPublic == true;
+    }
 
-      match /{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+    match /users/{uid} {
+      allow read: if isOwner(uid) || resource.data.isPublic == true;
+      allow write: if isOwner(uid);
+
+      match /books/{bookId} {
+        allow read: if isOwner(uid) || isPublicProfile(uid);
+        allow write: if isOwner(uid);
       }
+
+      match /recommendations/{bookId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // Uniqueness claim for usernames: doc id is the lowercased name, value is { uid }.
+    match /usernames/{name} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow delete: if resource.data.uid == request.auth.uid;
+      allow update: if false;
     }
   }
 }

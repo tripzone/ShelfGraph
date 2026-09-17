@@ -4,6 +4,7 @@ import type { GridSize } from '../../hooks/useGridSize'
 import type { BookFormat } from '../../types/book'
 
 export type SortMode = 'custom' | 'title' | 'date' | 'genre'
+export type SortDirection = 'asc' | 'desc'
 
 const SORT_LABELS: Record<SortMode, string> = {
   custom: 'Custom',
@@ -73,6 +74,7 @@ function SettingsIcon() {
 
 interface ReadToolbarProps {
   sortMode: SortMode
+  sortDirection: SortDirection
   onSortModeChange: (mode: SortMode) => void
   genres: string[]
   genreFilter: Set<string>
@@ -87,6 +89,7 @@ interface ReadToolbarProps {
 
 export function ReadToolbar({
   sortMode,
+  sortDirection,
   onSortModeChange,
   genres,
   genreFilter,
@@ -149,7 +152,9 @@ export function ReadToolbar({
         <button
           type="button"
           onClick={() => setOpenMenu((m) => (m === 'sort' ? null : 'sort'))}
-          aria-label={`Sort: ${SORT_LABELS[sortMode]}`}
+          aria-label={`Sort: ${SORT_LABELS[sortMode]}${
+            sortMode !== 'custom' ? (sortDirection === 'asc' ? ' ascending' : ' descending') : ''
+          }`}
           className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition-colors hover:bg-canvas hover:text-ink"
         >
           <SortIcon />
@@ -164,11 +169,16 @@ export function ReadToolbar({
                   onSortModeChange(mode)
                   setOpenMenu(null)
                 }}
-                className={`block w-full px-3 py-1.5 text-left text-sm hover:bg-canvas ${
+                className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-canvas ${
                   mode === sortMode ? 'font-semibold text-ink' : 'text-ink/80'
                 }`}
               >
                 {SORT_LABELS[mode]}
+                {mode === sortMode && mode !== 'custom' && (
+                  <span aria-hidden="true" className="text-xs text-muted">
+                    {sortDirection === 'asc' ? '↑' : '↓'}
+                  </span>
+                )}
               </button>
             ))}
           </div>
