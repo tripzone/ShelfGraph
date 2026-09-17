@@ -1,10 +1,34 @@
 import { useEffect, useState } from 'react'
-import { Navigate, NavLink, Route, Routes, useParams } from 'react-router-dom'
+import { Link, Navigate, NavLink, Route, Routes, useParams } from 'react-router-dom'
 import { ReadGrid } from '../read/ReadGrid'
 import { QueueList } from '../toread/QueueList'
 import { getPublicProfileByUsername, type PublicUser } from '../../firebase/profile'
 
 type LoadState = 'loading' | 'not-found' | 'ready'
+
+function BackHomeLink() {
+  return (
+    <Link
+      to="/"
+      aria-label="Back home"
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-canvas hover:text-ink"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="h-5 w-5"
+      >
+        <path d="M19 12H5" />
+        <path d="M12 19l-7-7 7-7" />
+      </svg>
+    </Link>
+  )
+}
 
 function tabsFor(username: string) {
   return [
@@ -82,9 +106,12 @@ export function PublicProfilePage() {
 
   if (state === 'not-found' || !profile) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-2 px-6 text-center">
+      <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-3 px-6 text-center">
         <h1 className="text-lg font-semibold text-ink">This profile isn't available</h1>
         <p className="text-sm text-muted">It may be private, or the username might not exist.</p>
+        <Link to="/" className="mt-2 text-sm font-medium text-ink underline underline-offset-2">
+          Back home
+        </Link>
       </div>
     )
   }
@@ -92,6 +119,7 @@ export function PublicProfilePage() {
   return (
     <div className="min-h-screen">
       <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-4">
+        <BackHomeLink />
         <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-hairline">
           {profile.photoURL && (
             <img src={profile.photoURL} alt="" className="h-full w-full object-cover" />

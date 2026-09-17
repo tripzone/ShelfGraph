@@ -55,7 +55,7 @@ function AuthenticatedApp() {
           <Link
             to="/settings"
             aria-label="Settings"
-            className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-hairline"
+            className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-hairline ring-1 ring-hairline transition-opacity hover:opacity-80"
           >
             {user.photoURL && (
               <img src={user.photoURL} alt="" className="h-full w-full object-cover" />
