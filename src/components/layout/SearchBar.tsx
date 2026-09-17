@@ -77,6 +77,7 @@ export function SearchBar({ uid }: { uid: string | undefined }) {
       {creatingCustom && (
         <CreateBookModal
           initialTitle={query}
+          uid={uid}
           onClose={() => setCreatingCustom(false)}
           onCreate={handleCreateCustom}
         />

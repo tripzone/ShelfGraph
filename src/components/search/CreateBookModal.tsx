@@ -1,14 +1,16 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { uploadCustomCover } from '../../firebase/storage'
 import type { BookMetadata } from '../../types/book'
 
 interface CreateBookModalProps {
   initialTitle: string
+  uid: string | undefined
   onClose: () => void
   onCreate: (book: BookMetadata) => void
 }
 
-export function CreateBookModal({ initialTitle, onClose, onCreate }: CreateBookModalProps) {
+export function CreateBookModal({ initialTitle, uid, onClose, onCreate }: CreateBookModalProps) {
   const [title, setTitle] = useState(initialTitle)
   const [author, setAuthor] = useState('')
   const [genre, setGenre] = useState('')
@@ -16,18 +18,48 @@ export function CreateBookModal({ initialTitle, onClose, onCreate }: CreateBookM
   const [publisher, setPublisher] = useState('')
   const [publishedDate, setPublishedDate] = useState('')
   const [description, setDescription] = useState('')
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const [coverError, setCoverError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleCoverFile(file: File | undefined) {
+    if (!file) return
+    setCoverError(null)
+    setCoverFile(file)
+    setCoverPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return URL.createObjectURL(file)
+    })
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const trimmedTitle = title.trim()
     if (!trimmedTitle) return
     const trimmedPageCount = pageCount.trim()
+    const googleVolumeId = `custom-${crypto.randomUUID()}`
+
+    let coverUrl: string | null = null
+    if (coverFile && uid) {
+      setUploadingCover(true)
+      try {
+        coverUrl = await uploadCustomCover(uid, googleVolumeId, coverFile)
+      } catch {
+        setCoverError('Could not upload that image.')
+        setUploadingCover(false)
+        return
+      }
+      setUploadingCover(false)
+    }
+
     onCreate({
-      googleVolumeId: `custom-${crypto.randomUUID()}`,
+      googleVolumeId,
       title: trimmedTitle,
       authors: author.trim() ? [author.trim()] : [],
-      coverUrl: null,
-      defaultCoverUrl: null,
+      coverUrl,
+      defaultCoverUrl: coverUrl,
       pageCount: trimmedPageCount ? Number(trimmedPageCount) : null,
       categories: genre.trim() ? [genre.trim()] : [],
       description: description.trim(),
@@ -53,7 +85,34 @@ export function CreateBookModal({ initialTitle, onClose, onCreate }: CreateBookM
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className="overflow-y-auto px-6 pb-4 pt-8">
             <div className="flex gap-4">
-              <div className="h-36 w-24 shrink-0 rounded-md bg-hairline shadow-sm" />
+              <div className="shrink-0">
+                <div className="relative h-36 w-24 overflow-hidden rounded-md bg-hairline shadow-sm">
+                  {coverPreviewUrl && (
+                    <img src={coverPreviewUrl} alt="" className="h-full w-full object-cover" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    aria-label="Choose cover image"
+                    className="absolute inset-x-0 bottom-0 bg-black/60 py-1 text-center text-[11px] font-semibold text-white"
+                  >
+                    {coverPreviewUrl ? '✎ Edit' : '+ Cover'}
+                  </button>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    handleCoverFile(e.target.files?.[0])
+                    e.target.value = ''
+                  }}
+                />
+                {coverError && (
+                  <p className="mt-1 text-[11px] text-red-600 dark:text-red-400">{coverError}</p>
+                )}
+              </div>
               <div className="min-w-0 flex-1 space-y-2">
                 <input
                   autoFocus
@@ -112,10 +171,10 @@ export function CreateBookModal({ initialTitle, onClose, onCreate }: CreateBookM
           <div className="shrink-0 border-t border-hairline p-3">
             <button
               type="submit"
-              disabled={!title.trim()}
+              disabled={!title.trim() || uploadingCover}
               className="w-full rounded-full bg-ink py-3 text-sm font-semibold text-ink-inverse disabled:opacity-50"
             >
-              Add Title
+              {uploadingCover ? 'Uploading…' : 'Add Title'}
             </button>
           </div>
         </form>
