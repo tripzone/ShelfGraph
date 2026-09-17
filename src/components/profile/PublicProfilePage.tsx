@@ -6,16 +6,19 @@ import { getPublicProfileByUsername, type PublicUser } from '../../firebase/prof
 
 type LoadState = 'loading' | 'not-found' | 'ready'
 
-const TABS = [
-  { to: 'read', label: 'Read' },
-  { to: 'to-read', label: 'To-Read' },
-]
+function tabsFor(username: string) {
+  return [
+    { to: `/u/${username}/read`, label: 'Read' },
+    { to: `/u/${username}/to-read`, label: 'To-Read' },
+  ]
+}
 
-function PublicTabBar() {
+function PublicTabBar({ username }: { username: string }) {
+  const tabs = tabsFor(username)
   return (
     <nav className="sticky top-0 z-20 border-b border-hairline bg-surface/95 backdrop-blur">
       <ul className="mx-auto flex max-w-3xl">
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <li key={tab.to} className="flex-1">
             <NavLink
               to={tab.to}
@@ -102,14 +105,14 @@ export function PublicProfilePage() {
         </div>
       </div>
 
-      <PublicTabBar />
+      <PublicTabBar username={profile.username ?? username ?? ''} />
 
       <main className="pt-4">
         <Routes>
-          <Route path="/" element={<Navigate to="read" replace />} />
+          <Route path="/" element={<Navigate to={`/u/${username}/read`} replace />} />
           <Route path="read" element={<ReadGrid uid={profile.uid} readOnly />} />
           <Route path="to-read" element={<QueueList uid={profile.uid} readOnly />} />
-          <Route path="*" element={<Navigate to="read" replace />} />
+          <Route path="*" element={<Navigate to={`/u/${username}/read`} replace />} />
         </Routes>
       </main>
     </div>
