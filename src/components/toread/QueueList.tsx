@@ -18,7 +18,14 @@ import { useQueue } from '../../hooks/useQueue'
 import { useLibraryActions } from '../../hooks/useLibraryActions'
 import { useCatalogueGenres } from '../../hooks/useCatalogueGenres'
 
-export function QueueList({ uid }: { uid: string | undefined }) {
+export function QueueList({
+  uid,
+  readOnly = false,
+}: {
+  uid: string | undefined
+  /** Viewing someone else's public profile — no edits, no drag, view only. */
+  readOnly?: boolean
+}) {
   const { books, loading, reorder } = useQueue(uid)
   const { moveToRead, removeBook, changeCover, resetCover, updateDetails } = useLibraryActions(uid)
   const catalogueGenres = useCatalogueGenres(uid)
@@ -53,7 +60,7 @@ export function QueueList({ uid }: { uid: string | undefined }) {
     return (
       <div className="px-4 py-16 text-center">
         <p className="text-sm text-muted">
-          Your queue is empty. Search for a book above and add it.
+          {readOnly ? 'Nothing here yet.' : 'Your queue is empty. Search for a book above and add it.'}
         </p>
       </div>
     )
@@ -62,29 +69,55 @@ export function QueueList({ uid }: { uid: string | undefined }) {
   return (
     <>
       <div className="mx-auto max-w-3xl pb-24">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext
-            items={books.map((b) => b.googleVolumeId)}
-            strategy={verticalListSortingStrategy}
-          >
-            {books.map((book) => (
-              <QueueRow
-                key={book.googleVolumeId}
-                book={book}
-                onClick={() => setSelectedId(book.googleVolumeId)}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
+        {readOnly ? (
+          books.map((book) => (
+            <button
+              key={book.googleVolumeId}
+              onClick={() => setSelectedId(book.googleVolumeId)}
+              className="flex w-full items-center gap-3 border-b border-hairline px-2 py-3 text-left last:border-b-0"
+            >
+              <div className="h-[72px] w-12 shrink-0 overflow-hidden rounded bg-hairline">
+                {book.coverUrl && (
+                  <img src={book.coverUrl} alt="" className="h-full w-full object-cover" />
+                )}
+              </div>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
+                {book.title}
+              </span>
+              <span className="shrink-0 text-xs text-muted">
+                {book.pageCount ? `${book.pageCount}p` : '—'}
+              </span>
+            </button>
+          ))
+        ) : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext
+              items={books.map((b) => b.googleVolumeId)}
+              strategy={verticalListSortingStrategy}
+            >
+              {books.map((book) => (
+                <QueueRow
+                  key={book.googleVolumeId}
+                  book={book}
+                  onClick={() => setSelectedId(book.googleVolumeId)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+        )}
       </div>
 
       {selected && (
         <DetailModal
           book={selected}
           onClose={() => setSelectedId(null)}
-          onChangeCover={(file) => changeCover(selected.googleVolumeId, file)}
-          onResetCover={() => resetCover(selected.googleVolumeId, selected.defaultCoverUrl)}
-          onSaveDetails={(details) => updateDetails(selected.googleVolumeId, details)}
+          onChangeCover={readOnly ? undefined : (file) => changeCover(selected.googleVolumeId, file)}
+          onResetCover={
+            readOnly ? undefined : () => resetCover(selected.googleVolumeId, selected.defaultCoverUrl)
+          }
+          onSaveDetails={
+            readOnly ? undefined : (details) => updateDetails(selected.googleVolumeId, details)
+          }
           genres={catalogueGenres}
           onPrevious={selectedIndex > 0 ? () => handleNavigate(-1) : undefined}
           onNext={
@@ -93,42 +126,46 @@ export function QueueList({ uid }: { uid: string | undefined }) {
               : undefined
           }
           primaryAction={
-            <button
-              onClick={async () => {
-                await moveToRead(selected.googleVolumeId)
-                setSelectedId(null)
-              }}
-              className="w-full rounded-full border border-hairline py-3 text-sm font-semibold text-ink"
-            >
-              ✓ Mark as Read
-            </button>
+            readOnly ? undefined : (
+              <button
+                onClick={async () => {
+                  await moveToRead(selected.googleVolumeId)
+                  setSelectedId(null)
+                }}
+                className="w-full rounded-full border border-hairline py-3 text-sm font-semibold text-ink"
+              >
+                ✓ Mark as Read
+              </button>
+            )
           }
           footer={
-            <button
-              onClick={async () => {
-                await removeBook(selected.googleVolumeId)
-                setSelectedId(null)
-              }}
-              aria-label="Remove from Queue"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-hairline text-ink"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-4 w-4"
+            readOnly ? undefined : (
+              <button
+                onClick={async () => {
+                  await removeBook(selected.googleVolumeId)
+                  setSelectedId(null)
+                }}
+                aria-label="Remove from Queue"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-hairline text-ink"
               >
-                <path d="M3 6h18" />
-                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                <path d="M10 11v6" />
-                <path d="M14 11v6" />
-              </svg>
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-4 w-4"
+                >
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <path d="M10 11v6" />
+                  <path d="M14 11v6" />
+                </svg>
+              </button>
+            )
           }
         />
       )}

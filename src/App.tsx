@@ -32,7 +32,7 @@ export default function App() {
     <Routes>
       {/* Public profiles are viewable without signing in — this route must stay
           outside the auth gate below, which otherwise blocks every path. */}
-      <Route path="/u/:username" element={<PublicProfilePage />} />
+      <Route path="/u/:username/*" element={<PublicProfilePage />} />
       <Route path="/*" element={<AuthenticatedApp />} />
     </Routes>
   )

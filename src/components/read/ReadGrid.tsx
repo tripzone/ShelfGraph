@@ -33,7 +33,14 @@ function dateKey(book: UserBook): number {
   return book.finishedYear * 12 + (book.finishedMonth ?? 0)
 }
 
-export function ReadGrid({ uid }: { uid: string | undefined }) {
+export function ReadGrid({
+  uid,
+  readOnly = false,
+}: {
+  uid: string | undefined
+  /** Viewing someone else's public profile — no edits, no drag, view/sort/filter only. */
+  readOnly?: boolean
+}) {
   const { books, loading, rateBook, reorder } = useLibrary(uid)
   const { changeCover, resetCover, setFinishedDate, setFormat, removeBook, updateDetails } =
     useLibraryActions(uid)
@@ -113,7 +120,7 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
     return Array.from(groups.entries())
   }, [visibleBooks, sortMode])
 
-  const reorderCapable = sortMode === 'custom' && !filtersActive
+  const reorderCapable = !readOnly && sortMode === 'custom' && !filtersActive
   const dragEnabled = reorderCapable && reorderMode
 
   // Entering reorder mode is its own long-press gesture (handled in CoverTile,
@@ -173,7 +180,9 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
       {books.length === 0 ? (
         <div className="px-4 py-16 text-center">
           <p className="text-sm text-muted">
-            Nothing finished yet. Search for a book above and mark it as read.
+            {readOnly
+              ? 'Nothing here yet.'
+              : 'Nothing finished yet. Search for a book above and mark it as read.'}
           </p>
         </div>
       ) : visibleBooks.length === 0 ? (
@@ -228,12 +237,20 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
         <DetailModal
           book={selected}
           onClose={() => setSelectedId(null)}
-          onRate={(rating) => rateBook(selected.googleVolumeId, rating)}
-          onChangeCover={(file) => changeCover(selected.googleVolumeId, file)}
-          onResetCover={() => resetCover(selected.googleVolumeId, selected.defaultCoverUrl)}
-          onSetFinishedDate={(year, month) => setFinishedDate(selected.googleVolumeId, year, month)}
-          onSetFormat={(format) => setFormat(selected.googleVolumeId, format)}
-          onSaveDetails={(details) => updateDetails(selected.googleVolumeId, details)}
+          onRate={readOnly ? undefined : (rating) => rateBook(selected.googleVolumeId, rating)}
+          onChangeCover={readOnly ? undefined : (file) => changeCover(selected.googleVolumeId, file)}
+          onResetCover={
+            readOnly ? undefined : () => resetCover(selected.googleVolumeId, selected.defaultCoverUrl)
+          }
+          onSetFinishedDate={
+            readOnly
+              ? undefined
+              : (year, month) => setFinishedDate(selected.googleVolumeId, year, month)
+          }
+          onSetFormat={readOnly ? undefined : (format) => setFormat(selected.googleVolumeId, format)}
+          onSaveDetails={
+            readOnly ? undefined : (details) => updateDetails(selected.googleVolumeId, details)
+          }
           genres={catalogueGenres}
           onPrevious={selectedIndex > 0 ? () => handleNavigate(-1) : undefined}
           onNext={
@@ -242,31 +259,33 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
               : undefined
           }
           footer={
-            <button
-              onClick={async () => {
-                await removeBook(selected.googleVolumeId)
-                setSelectedId(null)
-              }}
-              aria-label="Remove from Read"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-hairline text-ink"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-4 w-4"
+            readOnly ? undefined : (
+              <button
+                onClick={async () => {
+                  await removeBook(selected.googleVolumeId)
+                  setSelectedId(null)
+                }}
+                aria-label="Remove from Read"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-hairline text-ink"
               >
-                <path d="M3 6h18" />
-                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                <path d="M10 11v6" />
-                <path d="M14 11v6" />
-              </svg>
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-4 w-4"
+                >
+                  <path d="M3 6h18" />
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <path d="M10 11v6" />
+                  <path d="M14 11v6" />
+                </svg>
+              </button>
+            )
           }
         />
       )}

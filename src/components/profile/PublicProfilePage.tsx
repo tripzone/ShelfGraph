@@ -1,18 +1,48 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { CoverTile } from '../read/CoverTile'
+import { Navigate, NavLink, Route, Routes, useParams } from 'react-router-dom'
+import { ReadGrid } from '../read/ReadGrid'
+import { QueueList } from '../toread/QueueList'
 import { getPublicProfileByUsername, type PublicUser } from '../../firebase/profile'
-import { subscribeToBooksByStatus } from '../../firebase/firestore'
-import type { UserBook } from '../../types/book'
 
 type LoadState = 'loading' | 'not-found' | 'ready'
+
+const TABS = [
+  { to: 'read', label: 'Read' },
+  { to: 'to-read', label: 'To-Read' },
+]
+
+function PublicTabBar() {
+  return (
+    <nav className="sticky top-0 z-20 border-b border-hairline bg-surface/95 backdrop-blur">
+      <ul className="mx-auto flex max-w-3xl">
+        {TABS.map((tab) => (
+          <li key={tab.to} className="flex-1">
+            <NavLink
+              to={tab.to}
+              className={({ isActive }) =>
+                `block px-2 py-3 text-center text-[13px] font-medium tracking-wide transition-colors ${
+                  isActive ? 'text-ink' : 'text-muted'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <span className="relative inline-block">
+                  {tab.label}
+                  {isActive && <span className="absolute -bottom-3 left-0 right-0 h-[2px] bg-ink" />}
+                </span>
+              )}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
 
 export function PublicProfilePage() {
   const { username } = useParams<{ username: string }>()
   const [state, setState] = useState<LoadState>('loading')
   const [profile, setProfile] = useState<PublicUser | null>(null)
-  const [readBooks, setReadBooks] = useState<UserBook[]>([])
-  const [toReadBooks, setToReadBooks] = useState<UserBook[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -39,16 +69,6 @@ export function PublicProfilePage() {
     }
   }, [username])
 
-  useEffect(() => {
-    if (!profile) return
-    const unsubRead = subscribeToBooksByStatus(profile.uid, 'read', setReadBooks)
-    const unsubToRead = subscribeToBooksByStatus(profile.uid, 'to-read', setToReadBooks)
-    return () => {
-      unsubRead()
-      unsubToRead()
-    }
-  }, [profile])
-
   if (state === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted">
@@ -61,64 +81,37 @@ export function PublicProfilePage() {
     return (
       <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-2 px-6 text-center">
         <h1 className="text-lg font-semibold text-ink">This profile isn't available</h1>
-        <p className="text-sm text-muted">
-          It may be private, or the username might not exist.
-        </p>
+        <p className="text-sm text-muted">It may be private, or the username might not exist.</p>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-3xl px-4 py-8">
-      <div className="flex items-center gap-3">
-        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-hairline">
+    <div className="min-h-screen">
+      <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-4">
+        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-hairline">
           {profile.photoURL && (
             <img src={profile.photoURL} alt="" className="h-full w-full object-cover" />
           )}
         </div>
         <div>
-          <h1 className="text-lg font-semibold text-ink">
+          <h1 className="text-base font-semibold text-ink">
             {profile.displayName ?? `@${profile.username}`}
           </h1>
           <p className="text-sm text-muted">@{profile.username}</p>
         </div>
       </div>
 
-      <section className="mt-8">
-        <h2 className="text-sm font-semibold text-ink">Read ({readBooks.length})</h2>
-        {readBooks.length === 0 ? (
-          <p className="mt-2 text-sm text-muted">Nothing here yet.</p>
-        ) : (
-          <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-5">
-            {readBooks.map((book) => (
-              <CoverTile key={book.googleVolumeId} book={book} onClick={() => {}} />
-            ))}
-          </div>
-        )}
-      </section>
+      <PublicTabBar />
 
-      <section className="mt-8">
-        <h2 className="text-sm font-semibold text-ink">To-Read ({toReadBooks.length})</h2>
-        {toReadBooks.length === 0 ? (
-          <p className="mt-2 text-sm text-muted">Nothing here yet.</p>
-        ) : (
-          <ul className="mt-3 overflow-hidden rounded-xl border border-hairline">
-            {toReadBooks.map((book) => (
-              <li
-                key={book.googleVolumeId}
-                className="flex items-center gap-3 border-b border-hairline px-3 py-2 last:border-b-0"
-              >
-                <div className="h-12 w-8 shrink-0 overflow-hidden rounded bg-hairline">
-                  {book.coverUrl && (
-                    <img src={book.coverUrl} alt="" className="h-full w-full object-cover" />
-                  )}
-                </div>
-                <span className="min-w-0 flex-1 truncate text-sm text-ink">{book.title}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <main className="pt-4">
+        <Routes>
+          <Route path="/" element={<Navigate to="read" replace />} />
+          <Route path="read" element={<ReadGrid uid={profile.uid} readOnly />} />
+          <Route path="to-read" element={<QueueList uid={profile.uid} readOnly />} />
+          <Route path="*" element={<Navigate to="read" replace />} />
+        </Routes>
+      </main>
     </div>
   )
 }
