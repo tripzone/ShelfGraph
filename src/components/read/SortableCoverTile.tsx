@@ -5,7 +5,7 @@ import type { UserBook } from '../../types/book'
 
 /**
  * Drag listeners go on the whole tile (no separate grip icon, to keep the grid
- * pure cover art) — dnd-kit's distance-based activation constraint is what lets a
+ * pure cover art) — dnd-kit's press-and-hold activation constraint is what lets a
  * quick tap still open the detail modal instead of starting a drag.
  */
 export function SortableCoverTile({ book, onClick }: { book: UserBook; onClick: () => void }) {

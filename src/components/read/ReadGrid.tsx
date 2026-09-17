@@ -85,7 +85,11 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
 
   const dragEnabled = sortMode === 'custom' && !filtersActive
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+  // Require a brief press-and-hold before a drag starts, so a quick tap or a
+  // scroll/refresh gesture that grazes a tile doesn't get mistaken for a reorder.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  )
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
