@@ -8,6 +8,7 @@ interface AutocompleteProps {
   query: string
   onSelectRow: (book: BookMetadata) => void
   onQuickAdd: (book: BookMetadata) => Promise<void>
+  onQuickMarkRead: (book: BookMetadata) => Promise<void>
   onCreateCustom: (book: BookMetadata) => void
 }
 
@@ -18,6 +19,7 @@ export function Autocomplete({
   query,
   onSelectRow,
   onQuickAdd,
+  onQuickMarkRead,
   onCreateCustom,
 }: AutocompleteProps) {
   if (!query.trim()) return null
@@ -40,6 +42,7 @@ export function Autocomplete({
             book={book}
             onSelectRow={onSelectRow}
             onQuickAdd={onQuickAdd}
+            onQuickMarkRead={onQuickMarkRead}
           />
         ))}
         {settled && (
@@ -66,22 +69,28 @@ function CreateCustomRow({
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [author, setAuthor] = useState('')
+  const [genre, setGenre] = useState('')
+  const [pageCount, setPageCount] = useState('')
+  const [publisher, setPublisher] = useState('')
+  const [publishedDate, setPublishedDate] = useState('')
+  const [description, setDescription] = useState('')
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const trimmedTitle = title.trim()
     if (!trimmedTitle) return
+    const trimmedPageCount = pageCount.trim()
     onCreate({
       googleVolumeId: `custom-${crypto.randomUUID()}`,
       title: trimmedTitle,
       authors: author.trim() ? [author.trim()] : [],
       coverUrl: null,
       defaultCoverUrl: null,
-      pageCount: null,
-      categories: [],
-      description: '',
-      publisher: null,
-      publishedDate: null,
+      pageCount: trimmedPageCount ? Number(trimmedPageCount) : null,
+      categories: genre.trim() ? [genre.trim()] : [],
+      description: description.trim(),
+      publisher: publisher.trim() || null,
+      publishedDate: publishedDate.trim() || null,
       isbn: null,
     })
   }
@@ -124,6 +133,40 @@ function CreateCustomRow({
           className="w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-ink focus:outline-none"
         />
         <div className="flex gap-2">
+          <input
+            value={genre}
+            onChange={(e) => setGenre(e.target.value)}
+            placeholder="Genre (optional)"
+            className="w-1/2 rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-ink focus:outline-none"
+          />
+          <input
+            value={pageCount}
+            onChange={(e) => setPageCount(e.target.value.replace(/\D/g, ''))}
+            inputMode="numeric"
+            placeholder="Pages (optional)"
+            className="w-1/2 rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-ink focus:outline-none"
+          />
+        </div>
+        <input
+          value={publisher}
+          onChange={(e) => setPublisher(e.target.value)}
+          placeholder="Publisher (optional)"
+          className="w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-ink focus:outline-none"
+        />
+        <input
+          value={publishedDate}
+          onChange={(e) => setPublishedDate(e.target.value)}
+          placeholder="Release date (optional)"
+          className="w-full rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-ink focus:outline-none"
+        />
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Description (optional)"
+          rows={3}
+          className="w-full resize-none rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-ink focus:outline-none"
+        />
+        <div className="flex gap-2">
           <button
             type="submit"
             disabled={!title.trim()}
@@ -148,13 +191,17 @@ function SearchResultRow({
   book,
   onSelectRow,
   onQuickAdd,
+  onQuickMarkRead,
 }: {
   book: BookMetadata
   onSelectRow: (book: BookMetadata) => void
   onQuickAdd: (book: BookMetadata) => Promise<void>
+  onQuickMarkRead: (book: BookMetadata) => Promise<void>
 }) {
   const [added, setAdded] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [markedRead, setMarkedRead] = useState(false)
+  const [markingRead, setMarkingRead] = useState(false)
 
   async function handleQuickAdd(e: React.MouseEvent) {
     e.stopPropagation()
@@ -164,6 +211,16 @@ function SearchResultRow({
     setAdding(false)
     setAdded(true)
     setTimeout(() => setAdded(false), 1500)
+  }
+
+  async function handleQuickMarkRead(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (markedRead || markingRead) return
+    setMarkingRead(true)
+    await onQuickMarkRead(book)
+    setMarkingRead(false)
+    setMarkedRead(true)
+    setTimeout(() => setMarkedRead(false), 1500)
   }
 
   return (
@@ -180,19 +237,34 @@ function SearchResultRow({
         <p className="truncate text-sm font-semibold text-ink">{book.title}</p>
         <p className="truncate text-xs text-muted">{book.authors.join(', ') || 'Unknown author'}</p>
       </div>
-      <button
-        type="button"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={handleQuickAdd}
-        aria-label={added ? 'Added to queue' : 'Quick add to queue'}
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-lg transition-colors ${
-          added
-            ? 'border-accent bg-accent-soft text-accent'
-            : 'border-hairline text-ink hover:border-ink'
-        }`}
-      >
-        {added ? '✓' : '+'}
-      </button>
+      <div className="flex shrink-0 items-center gap-1.5">
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={handleQuickAdd}
+          aria-label={added ? 'Added to queue' : 'Quick add to queue'}
+          className={`flex h-8 w-8 items-center justify-center rounded-full border text-lg transition-colors ${
+            added
+              ? 'border-accent bg-accent-soft text-accent'
+              : 'border-hairline text-ink hover:border-ink'
+          }`}
+        >
+          {added ? '✓' : '+'}
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={handleQuickMarkRead}
+          aria-label={markedRead ? 'Marked as read' : 'Quick mark as read'}
+          className={`flex h-8 w-8 items-center justify-center rounded-full border text-base transition-colors ${
+            markedRead
+              ? 'border-accent bg-accent-soft text-accent'
+              : 'border-hairline text-ink hover:border-ink'
+          }`}
+        >
+          ✓
+        </button>
+      </div>
     </li>
   )
 }

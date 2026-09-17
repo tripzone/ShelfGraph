@@ -14,10 +14,17 @@ import { ReadToolbar, type SortMode } from './ReadToolbar'
 import { DetailModal } from '../shared/DetailModal'
 import { useLibrary } from '../../hooks/useLibrary'
 import { useLibraryActions } from '../../hooks/useLibraryActions'
+import { useGridSize, type GridSize } from '../../hooks/useGridSize'
 import type { BookFormat, UserBook } from '../../types/book'
 
-const GRID_CLASSES =
-  'mx-auto grid max-w-3xl grid-cols-3 gap-1 px-1 pb-24 sm:grid-cols-4 sm:gap-2 sm:px-4'
+const GRID_BASE_CLASSES = 'mx-auto grid max-w-3xl gap-1 px-1 pb-24 sm:gap-2 sm:px-4'
+
+const GRID_SIZE_CLASSES: Record<GridSize, string> = {
+  xs: 'grid-cols-5 sm:grid-cols-7',
+  s: 'grid-cols-4 sm:grid-cols-5',
+  m: 'grid-cols-3 sm:grid-cols-4',
+  l: 'grid-cols-2 sm:grid-cols-3',
+}
 
 function dateKey(book: UserBook): number {
   if (!book.finishedYear) return -Infinity
@@ -26,11 +33,14 @@ function dateKey(book: UserBook): number {
 
 export function ReadGrid({ uid }: { uid: string | undefined }) {
   const { books, loading, rateBook, reorder } = useLibrary(uid)
-  const { changeCover, resetCover, setFinishedDate, setFormat } = useLibraryActions(uid)
+  const { changeCover, resetCover, setFinishedDate, setFormat, removeBook } =
+    useLibraryActions(uid)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sortMode, setSortMode] = useState<SortMode>('custom')
   const [genreFilter, setGenreFilter] = useState<Set<string>>(new Set())
   const [formatFilter, setFormatFilter] = useState<Set<BookFormat>>(new Set())
+  const { gridSize, setGridSize } = useGridSize()
+  const gridClasses = `${GRID_BASE_CLASSES} ${GRID_SIZE_CLASSES[gridSize]}`
 
   const selected = books.find((b) => b.googleVolumeId === selectedId) ?? null
 
@@ -92,17 +102,17 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
 
   return (
     <>
-      {books.length > 0 && (
-        <ReadToolbar
-          sortMode={sortMode}
-          onSortModeChange={setSortMode}
-          genres={genres}
-          genreFilter={genreFilter}
-          onGenreFilterChange={setGenreFilter}
-          formatFilter={formatFilter}
-          onFormatFilterChange={setFormatFilter}
-        />
-      )}
+      <ReadToolbar
+        sortMode={sortMode}
+        onSortModeChange={setSortMode}
+        genres={genres}
+        genreFilter={genreFilter}
+        onGenreFilterChange={setGenreFilter}
+        formatFilter={formatFilter}
+        onFormatFilterChange={setFormatFilter}
+        gridSize={gridSize}
+        onGridSizeChange={setGridSize}
+      />
 
       {books.length === 0 ? (
         <div className="px-4 py-16 text-center">
@@ -120,7 +130,7 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
             items={visibleBooks.map((b) => b.googleVolumeId)}
             strategy={rectSortingStrategy}
           >
-            <div className={GRID_CLASSES}>
+            <div className={gridClasses}>
               {visibleBooks.map((book) => (
                 <SortableCoverTile
                   key={book.googleVolumeId}
@@ -132,7 +142,7 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
           </SortableContext>
         </DndContext>
       ) : (
-        <div className={GRID_CLASSES}>
+        <div className={gridClasses}>
           {visibleBooks.map((book) => (
             <CoverTile
               key={book.googleVolumeId}
@@ -152,6 +162,33 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
           onResetCover={() => resetCover(selected.googleVolumeId, selected.defaultCoverUrl)}
           onSetFinishedDate={(year, month) => setFinishedDate(selected.googleVolumeId, year, month)}
           onSetFormat={(format) => setFormat(selected.googleVolumeId, format)}
+          footer={
+            <button
+              onClick={async () => {
+                await removeBook(selected.googleVolumeId)
+                setSelectedId(null)
+              }}
+              aria-label="Remove from Read"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-hairline text-ink"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+              >
+                <path d="M3 6h18" />
+                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                <path d="M10 11v6" />
+                <path d="M14 11v6" />
+              </svg>
+            </button>
+          }
         />
       )}
     </>

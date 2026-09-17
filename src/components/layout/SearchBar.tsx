@@ -10,7 +10,7 @@ export function SearchBar({ uid }: { uid: string | undefined }) {
   const [focused, setFocused] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const { results, loading, error } = useBookSearch(query)
-  const { addToQueue } = useLibraryActions(uid)
+  const { addToQueue, markAsRead } = useLibraryActions(uid)
   const openSheet = useUiStore((s) => s.openSheet)
   const pushToast = useUiStore((s) => s.pushToast)
 
@@ -22,6 +22,11 @@ export function SearchBar({ uid }: { uid: string | undefined }) {
   async function handleQuickAdd(book: BookMetadata) {
     await addToQueue(book)
     pushToast('Added to Queue')
+  }
+
+  async function handleQuickMarkRead(book: BookMetadata) {
+    await markAsRead(book)
+    pushToast('Marked as Read')
   }
 
   return (
@@ -51,6 +56,7 @@ export function SearchBar({ uid }: { uid: string | undefined }) {
           query={query}
           onSelectRow={handleSelectRow}
           onQuickAdd={handleQuickAdd}
+          onQuickMarkRead={handleQuickMarkRead}
           onCreateCustom={handleSelectRow}
         />
       )}

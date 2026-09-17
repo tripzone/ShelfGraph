@@ -178,7 +178,7 @@ export function BottomSheet({ uid }: { uid: string | undefined }) {
               <button
                 type="button"
                 onClick={handleMarkAsRead}
-                className="flex-1 rounded-full bg-ink py-3 text-sm font-semibold text-ink-inverse"
+                className="flex-1 rounded-full border border-hairline py-3 text-sm font-semibold text-ink"
               >
                 ✓ Mark as Read
               </button>
