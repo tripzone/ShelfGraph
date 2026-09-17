@@ -4,14 +4,20 @@ import { CoverTile } from './CoverTile'
 import type { UserBook } from '../../types/book'
 
 /**
- * Drag listeners go on the whole tile (no separate grip icon, to keep the grid
- * pure cover art) — dnd-kit's press-and-hold activation constraint is what lets a
- * quick tap still open the detail modal instead of starting a drag. `touch-pan-y`
- * (rather than `touch-none`) keeps native vertical scrolling working while a touch
- * is still pending activation; only once a drag actually starts does dnd-kit take
- * over the gesture and block scrolling.
+ * Only rendered once the grid is already in reorder mode (entered via a separate
+ * long-press gesture on the plain, scrollable CoverTile — see ReadGrid), so it's
+ * safe to fully claim the touch gesture here with `touch-none`: dnd-kit's own
+ * auto-scroll-near-edges covers panning while an item is actively dragged.
  */
-export function SortableCoverTile({ book, onClick }: { book: UserBook; onClick: () => void }) {
+export function SortableCoverTile({
+  book,
+  onClick,
+  wiggleDelayMs,
+}: {
+  book: UserBook
+  onClick: () => void
+  wiggleDelayMs: number
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: book.googleVolumeId,
   })
@@ -22,9 +28,9 @@ export function SortableCoverTile({ book, onClick }: { book: UserBook; onClick: 
       style={{ transform: CSS.Transform.toString(transform), transition }}
       {...attributes}
       {...listeners}
-      className={`touch-pan-y ${isDragging ? 'z-10 opacity-80' : ''}`}
+      className={`touch-none ${isDragging ? 'z-10 opacity-80' : ''}`}
     >
-      <CoverTile book={book} onClick={onClick} />
+      <CoverTile book={book} onClick={onClick} wiggle={!isDragging} wiggleDelayMs={wiggleDelayMs} />
     </div>
   )
 }

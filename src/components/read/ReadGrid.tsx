@@ -39,6 +39,7 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
   const [sortMode, setSortMode] = useState<SortMode>('custom')
   const [genreFilter, setGenreFilter] = useState<Set<string>>(new Set())
   const [formatFilter, setFormatFilter] = useState<Set<BookFormat>>(new Set())
+  const [reorderMode, setReorderMode] = useState(false)
   const { gridSize, setGridSize } = useGridSize()
   const gridClasses = `${GRID_BASE_CLASSES} ${GRID_SIZE_CLASSES[gridSize]}`
 
@@ -83,13 +84,22 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
     return sorted
   }, [books, sortMode, genreFilter, formatFilter])
 
-  const dragEnabled = sortMode === 'custom' && !filtersActive
+  const reorderCapable = sortMode === 'custom' && !filtersActive
+  const dragEnabled = reorderCapable && reorderMode
 
-  // Require a brief press-and-hold before a drag starts, so a quick tap or a
-  // scroll/refresh gesture that grazes a tile doesn't get mistaken for a reorder.
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
-  )
+  // Entering reorder mode is its own long-press gesture (handled in CoverTile,
+  // without ever touching touch-action or preventDefault, so normal scrolling
+  // is never at odds with it). Once inside reorder mode, a plain small-distance
+  // constraint is enough to tell a drag from a tap that exits the mode.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+
+  function handleTileTap(book: UserBook) {
+    if (reorderMode) {
+      setReorderMode(false)
+      return
+    }
+    setSelectedId(book.googleVolumeId)
+  }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
@@ -116,6 +126,8 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
         onFormatFilterChange={setFormatFilter}
         gridSize={gridSize}
         onGridSizeChange={setGridSize}
+        reorderMode={reorderMode}
+        onExitReorderMode={() => setReorderMode(false)}
       />
 
       {books.length === 0 ? (
@@ -135,11 +147,12 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
             strategy={rectSortingStrategy}
           >
             <div className={gridClasses}>
-              {visibleBooks.map((book) => (
+              {visibleBooks.map((book, index) => (
                 <SortableCoverTile
                   key={book.googleVolumeId}
                   book={book}
-                  onClick={() => setSelectedId(book.googleVolumeId)}
+                  onClick={() => handleTileTap(book)}
+                  wiggleDelayMs={(index % 4) * 30}
                 />
               ))}
             </div>
@@ -151,7 +164,8 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
             <CoverTile
               key={book.googleVolumeId}
               book={book}
-              onClick={() => setSelectedId(book.googleVolumeId)}
+              onClick={() => handleTileTap(book)}
+              onLongPress={reorderCapable ? () => setReorderMode(true) : undefined}
             />
           ))}
         </div>

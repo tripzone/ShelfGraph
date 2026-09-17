@@ -81,6 +81,8 @@ interface ReadToolbarProps {
   onFormatFilterChange: (next: Set<BookFormat>) => void
   gridSize: GridSize
   onGridSizeChange: (size: GridSize) => void
+  reorderMode: boolean
+  onExitReorderMode: () => void
 }
 
 export function ReadToolbar({
@@ -93,6 +95,8 @@ export function ReadToolbar({
   onFormatFilterChange,
   gridSize,
   onGridSizeChange,
+  reorderMode,
+  onExitReorderMode,
 }: ReadToolbarProps) {
   const [openMenu, setOpenMenu] = useState<'sort' | 'filter' | 'settings' | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -107,6 +111,21 @@ export function ReadToolbar({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  if (reorderMode) {
+    return (
+      <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-1">
+        <p className="text-xs text-muted">Drag covers to reorder</p>
+        <button
+          type="button"
+          onClick={onExitReorderMode}
+          className="rounded-full border border-hairline px-3 py-1 text-xs font-semibold text-ink"
+        >
+          Done
+        </button>
+      </div>
+    )
+  }
 
   function toggleGenre(genre: string) {
     const next = new Set(genreFilter)

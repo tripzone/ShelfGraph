@@ -77,3 +77,13 @@ body {
     transform: translateY(0);
   }
 }
+
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(-0.4deg);
+  }
+  50% {
+    transform: rotate(0.4deg);
+  }
+}
