@@ -1,0 +1,42 @@
+import { addBookToLibrary, removeUserBook, updateUserBook } from '../firebase/firestore'
+import { scoreBook } from '../firebase/functions'
+import { uploadCustomCover } from '../firebase/storage'
+import type { BookMetadata } from '../types/book'
+
+/** Add/remove/mark-read actions shared by the search sheet and detail modal. */
+export function useLibraryActions(uid: string | undefined) {
+  async function addToQueue(book: BookMetadata, order = 0) {
+    if (!uid) return
+    await addBookToLibrary(uid, book, 'to-read', order)
+    // Fire-and-forget: score once it's in the queue. Backed by a stub for now.
+    scoreBook(book.googleVolumeId).catch(() => {})
+  }
+
+  async function markAsRead(book: BookMetadata) {
+    if (!uid) return
+    await addBookToLibrary(uid, book, 'read')
+  }
+
+  async function moveToRead(volumeId: string) {
+    if (!uid) return
+    await updateUserBook(uid, volumeId, { status: 'read', dateFinished: new Date().toISOString() })
+  }
+
+  async function removeBook(volumeId: string) {
+    if (!uid) return
+    await removeUserBook(uid, volumeId)
+  }
+
+  async function changeCover(volumeId: string, file: File) {
+    if (!uid) return
+    const coverUrl = await uploadCustomCover(uid, volumeId, file)
+    await updateUserBook(uid, volumeId, { coverUrl })
+  }
+
+  async function resetCover(volumeId: string, defaultCoverUrl: string | null) {
+    if (!uid) return
+    await updateUserBook(uid, volumeId, { coverUrl: defaultCoverUrl })
+  }
+
+  return { addToQueue, markAsRead, moveToRead, removeBook, changeCover, resetCover }
+}
