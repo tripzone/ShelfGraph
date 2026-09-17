@@ -3,6 +3,11 @@ import { scoreBook } from '../firebase/functions'
 import { uploadCustomCover } from '../firebase/storage'
 import type { BookFormat, BookMetadata } from '../types/book'
 
+export type EditableBookDetails = Pick<
+  BookMetadata,
+  'title' | 'authors' | 'description' | 'publisher' | 'publishedDate' | 'pageCount' | 'categories'
+>
+
 /** Add/remove/mark-read actions shared by the search sheet and detail modal. */
 export function useLibraryActions(uid: string | undefined) {
   async function addToQueue(book: BookMetadata, order = 0) {
@@ -48,6 +53,11 @@ export function useLibraryActions(uid: string | undefined) {
     await updateUserBook(uid, volumeId, { format })
   }
 
+  async function updateDetails(volumeId: string, details: EditableBookDetails) {
+    if (!uid) return
+    await updateUserBook(uid, volumeId, details)
+  }
+
   return {
     addToQueue,
     markAsRead,
@@ -57,5 +67,6 @@ export function useLibraryActions(uid: string | undefined) {
     resetCover,
     setFinishedDate,
     setFormat,
+    updateDetails,
   }
 }

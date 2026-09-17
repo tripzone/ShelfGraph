@@ -1,16 +1,24 @@
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { uploadCustomCover } from '../../firebase/storage'
+import { GenreCombobox } from '../shared/GenreCombobox'
 import type { BookMetadata } from '../../types/book'
 
 interface CreateBookModalProps {
   initialTitle: string
   uid: string | undefined
+  genres: string[]
   onClose: () => void
   onCreate: (book: BookMetadata) => void
 }
 
-export function CreateBookModal({ initialTitle, uid, onClose, onCreate }: CreateBookModalProps) {
+export function CreateBookModal({
+  initialTitle,
+  uid,
+  genres,
+  onClose,
+  onCreate,
+}: CreateBookModalProps) {
   const [title, setTitle] = useState(initialTitle)
   const [author, setAuthor] = useState('')
   const [genre, setGenre] = useState('')
@@ -128,11 +136,13 @@ export function CreateBookModal({ initialTitle, uid, onClose, onCreate }: Create
                   className="w-full rounded-md border border-hairline bg-canvas px-2.5 py-1.5 text-sm text-ink placeholder:text-muted focus:border-ink focus:outline-none"
                 />
                 <div className="flex gap-1.5">
-                  <input
+                  <GenreCombobox
                     value={genre}
-                    onChange={(e) => setGenre(e.target.value)}
+                    genres={genres}
+                    onChange={setGenre}
                     placeholder="Genre"
-                    className="w-1/2 rounded-md border border-hairline bg-canvas px-2.5 py-1.5 text-xs text-ink placeholder:text-muted focus:border-ink focus:outline-none"
+                    className="w-1/2"
+                    inputClassName="w-full rounded-md border border-hairline bg-canvas px-2.5 py-1.5 text-xs text-ink placeholder:text-muted focus:border-ink focus:outline-none"
                   />
                   <input
                     value={pageCount}

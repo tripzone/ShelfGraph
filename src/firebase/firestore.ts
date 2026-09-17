@@ -146,7 +146,21 @@ export async function updateUserBook(
   patch: Partial<
     Pick<
       UserBook,
-      'rating' | 'status' | 'order' | 'finishedYear' | 'finishedMonth' | 'format' | 'coverUrl'
+      | 'rating'
+      | 'status'
+      | 'order'
+      | 'finishedYear'
+      | 'finishedMonth'
+      | 'format'
+      | 'coverUrl'
+      | 'title'
+      | 'authors'
+      | 'description'
+      | 'publisher'
+      | 'publishedDate'
+      | 'pageCount'
+      | 'categories'
+      | 'isbn'
     >
   >,
 ) {

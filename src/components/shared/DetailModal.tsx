@@ -1,4 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
+import { GenreCombobox } from './GenreCombobox'
+import type { EditableBookDetails } from '../../hooks/useLibraryActions'
 import type { BookFormat, BookMetadata } from '../../types/book'
 
 const MONTH_NAMES = [
@@ -39,6 +41,10 @@ interface DetailModalProps {
   onSetFinishedDate?: (year: number | null, month: number | null) => Promise<void>
   /** When provided, shows the Physical/Ebook/Audio format selector (Read tab only). */
   onSetFormat?: (format: BookFormat | null) => Promise<void>
+  /** When provided, shows a pencil affordance that turns this same view into an editable form. */
+  onSaveDetails?: (details: EditableBookDetails) => Promise<void>
+  /** Existing genres across the user's catalogue, offered in the genre field while editing. */
+  genres?: string[]
   footer?: ReactNode
 }
 
@@ -50,6 +56,8 @@ export function DetailModal({
   onResetCover,
   onSetFinishedDate,
   onSetFormat,
+  onSaveDetails,
+  genres = [],
   footer,
 }: DetailModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -59,6 +67,53 @@ export function DetailModal({
   const hasCustomCover = book.coverUrl && book.coverUrl !== book.defaultCoverUrl
   const currentYear = new Date().getFullYear()
   const yearOptions = Array.from({ length: 101 }, (_, i) => currentYear - i)
+
+  const [editing, setEditing] = useState(false)
+  const [savingDetails, setSavingDetails] = useState(false)
+  const [titleInput, setTitleInput] = useState(book.title)
+  const [authorsInput, setAuthorsInput] = useState(book.authors.join(', '))
+  const [genreInput, setGenreInput] = useState(book.categories[0] ?? '')
+  const [pageCountInput, setPageCountInput] = useState(
+    book.pageCount != null ? String(book.pageCount) : '',
+  )
+  const [publisherInput, setPublisherInput] = useState(book.publisher ?? '')
+  const [publishedDateInput, setPublishedDateInput] = useState(book.publishedDate ?? '')
+  const [descriptionInput, setDescriptionInput] = useState(book.description)
+
+  function startEditing() {
+    setTitleInput(book.title)
+    setAuthorsInput(book.authors.join(', '))
+    setGenreInput(book.categories[0] ?? '')
+    setPageCountInput(book.pageCount != null ? String(book.pageCount) : '')
+    setPublisherInput(book.publisher ?? '')
+    setPublishedDateInput(book.publishedDate ?? '')
+    setDescriptionInput(book.description)
+    setEditing(true)
+  }
+
+  async function handleSaveDetails() {
+    if (!onSaveDetails) return
+    const trimmedTitle = titleInput.trim()
+    if (!trimmedTitle) return
+    setSavingDetails(true)
+    try {
+      await onSaveDetails({
+        title: trimmedTitle,
+        authors: authorsInput
+          .split(',')
+          .map((a) => a.trim())
+          .filter(Boolean),
+        categories: genreInput.trim() ? [genreInput.trim()] : [],
+        pageCount: pageCountInput.trim() ? Number(pageCountInput.trim()) : null,
+        publisher: publisherInput.trim() || null,
+        publishedDate: publishedDateInput.trim() || null,
+        description: descriptionInput.trim(),
+      })
+      setEditing(false)
+    } finally {
+      setSavingDetails(false)
+    }
+  }
 
   async function handleYearChange(e: React.ChangeEvent<HTMLSelectElement>) {
     if (!onSetFinishedDate) return
@@ -158,14 +213,51 @@ export function DetailModal({
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-semibold leading-tight text-ink">{book.title}</h2>
-              <p className="mt-0.5 text-sm text-muted">
-                {book.authors.join(', ') || 'Unknown author'}
-              </p>
-              <p className="mt-2 text-xs text-muted">
-                {book.pageCount ? `📖 ${book.pageCount} pages` : null}
-                {book.categories[0] ? `  |  🏷️ ${book.categories[0]}` : null}
-              </p>
+              {editing ? (
+                <div className="space-y-1.5">
+                  <input
+                    autoFocus
+                    value={titleInput}
+                    onChange={(e) => setTitleInput(e.target.value)}
+                    placeholder="Title"
+                    className="w-full rounded-md border border-hairline bg-canvas px-2 py-1 text-base font-semibold text-ink placeholder:text-muted placeholder:font-normal focus:border-ink focus:outline-none"
+                  />
+                  <input
+                    value={authorsInput}
+                    onChange={(e) => setAuthorsInput(e.target.value)}
+                    placeholder="Author(s), comma-separated"
+                    className="w-full rounded-md border border-hairline bg-canvas px-2 py-1 text-sm text-ink placeholder:text-muted focus:border-ink focus:outline-none"
+                  />
+                  <div className="flex gap-1.5">
+                    <input
+                      value={pageCountInput}
+                      onChange={(e) => setPageCountInput(e.target.value.replace(/\D/g, ''))}
+                      inputMode="numeric"
+                      placeholder="Pages"
+                      className="w-1/2 rounded-md border border-hairline bg-canvas px-2 py-1 text-xs text-ink placeholder:text-muted focus:border-ink focus:outline-none"
+                    />
+                    <GenreCombobox
+                      value={genreInput}
+                      genres={genres}
+                      onChange={setGenreInput}
+                      placeholder="Genre"
+                      className="w-1/2"
+                      inputClassName="w-full rounded-md border border-hairline bg-canvas px-2 py-1 text-xs text-ink placeholder:text-muted focus:border-ink focus:outline-none"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-lg font-semibold leading-tight text-ink">{book.title}</h2>
+                  <p className="mt-0.5 text-sm text-muted">
+                    {book.authors.join(', ') || 'Unknown author'}
+                  </p>
+                  <p className="mt-2 text-xs text-muted">
+                    {book.pageCount ? `📖 ${book.pageCount} pages` : null}
+                    {book.categories[0] ? `  |  🏷️ ${book.categories[0]}` : null}
+                  </p>
+                </>
+              )}
 
               {onRate && (
                 <div className="mt-3 flex gap-1">
@@ -257,38 +349,120 @@ export function DetailModal({
             </div>
           )}
 
-          {book.description && (
-            <div className="mt-4">
-              <p
-                className={`whitespace-pre-line text-sm leading-relaxed text-ink/80 ${
-                  descExpanded ? '' : 'line-clamp-5'
-                }`}
-              >
-                {book.description}
-              </p>
-              <button
-                type="button"
-                onClick={() => setDescExpanded((v) => !v)}
-                className="mt-1 text-sm font-medium text-ink underline underline-offset-2"
-              >
-                {descExpanded ? 'Show less' : 'Read more'}
-              </button>
-            </div>
+          {editing ? (
+            <textarea
+              value={descriptionInput}
+              onChange={(e) => setDescriptionInput(e.target.value)}
+              placeholder="Description (optional)"
+              rows={5}
+              className="mt-4 w-full resize-none rounded-md border border-hairline bg-canvas px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-ink focus:outline-none"
+            />
+          ) : (
+            book.description && (
+              <div className="mt-4">
+                <p
+                  className={`whitespace-pre-line text-sm leading-relaxed text-ink/80 ${
+                    descExpanded ? '' : 'line-clamp-5'
+                  }`}
+                >
+                  {book.description}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setDescExpanded((v) => !v)}
+                  className="mt-1 text-sm font-medium text-ink underline underline-offset-2"
+                >
+                  {descExpanded ? 'Show less' : 'Read more'}
+                </button>
+              </div>
+            )
           )}
 
-          <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <dt className="text-xs text-muted">Publisher</dt>
-              <dd className="text-ink">{book.publisher ?? '—'}</dd>
+          {editing ? (
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="mb-1 text-xs text-muted">Publisher</p>
+                <input
+                  value={publisherInput}
+                  onChange={(e) => setPublisherInput(e.target.value)}
+                  className="w-full rounded-md border border-hairline bg-canvas px-2 py-1 text-sm text-ink focus:border-ink focus:outline-none"
+                />
+              </div>
+              <div>
+                <p className="mb-1 text-xs text-muted">Release Date</p>
+                <input
+                  value={publishedDateInput}
+                  onChange={(e) => setPublishedDateInput(e.target.value)}
+                  className="w-full rounded-md border border-hairline bg-canvas px-2 py-1 text-sm text-ink focus:border-ink focus:outline-none"
+                />
+              </div>
             </div>
-            <div>
-              <dt className="text-xs text-muted">Release Date</dt>
-              <dd className="text-ink">{book.publishedDate ?? '—'}</dd>
-            </div>
-          </dl>
+          ) : (
+            <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <dt className="text-xs text-muted">Publisher</dt>
+                <dd className="text-ink">{book.publisher ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted">Release Date</dt>
+                <dd className="text-ink">{book.publishedDate ?? '—'}</dd>
+              </div>
+            </dl>
+          )}
         </div>
 
-        {footer && <div className="shrink-0 border-t border-hairline p-3">{footer}</div>}
+        {editing ? (
+          <div className="shrink-0 border-t border-hairline p-3">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                disabled={savingDetails}
+                className="flex-1 rounded-full border border-hairline py-3 text-sm font-semibold text-ink disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSaveDetails()}
+                disabled={!titleInput.trim() || savingDetails}
+                className="flex-1 rounded-full bg-ink py-3 text-sm font-semibold text-ink-inverse disabled:opacity-50"
+              >
+                {savingDetails ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          (onSaveDetails || footer) && (
+            <div className="shrink-0 border-t border-hairline p-3">
+              <div className="flex justify-center gap-2">
+                {onSaveDetails && (
+                  <button
+                    type="button"
+                    onClick={startEditing}
+                    aria-label="Edit details"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-hairline text-ink"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-4 w-4"
+                    >
+                      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z" />
+                      <path d="m15 5 4 4" />
+                    </svg>
+                  </button>
+                )}
+                {footer}
+              </div>
+            </div>
+          )
+        )}
       </div>
     </div>
   )

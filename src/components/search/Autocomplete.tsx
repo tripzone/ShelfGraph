@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { BookMetadata } from '../../types/book'
 
 interface AutocompleteProps {
@@ -81,13 +82,20 @@ function SearchResultRow({
   onQuickAdd: (book: BookMetadata) => Promise<void>
   onQuickMarkRead: (book: BookMetadata) => Promise<void>
 }) {
+  const [added, setAdded] = useState(false)
+  const [markedRead, setMarkedRead] = useState(false)
+
   function handleQuickAdd(e: React.MouseEvent) {
     e.stopPropagation()
+    if (added || markedRead) return
+    setAdded(true)
     onQuickAdd(book)
   }
 
   function handleQuickMarkRead(e: React.MouseEvent) {
     e.stopPropagation()
+    if (added || markedRead) return
+    setMarkedRead(true)
     onQuickMarkRead(book)
   }
 
@@ -110,8 +118,12 @@ function SearchResultRow({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={handleQuickAdd}
-          aria-label="Quick add to queue"
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-hairline text-lg text-ink transition-colors hover:border-ink"
+          aria-label={added ? 'Added to queue' : 'Quick add to queue'}
+          className={`flex h-8 w-8 items-center justify-center rounded-full border text-lg transition-colors ${
+            added
+              ? 'border-accent bg-accent-soft text-accent'
+              : 'border-hairline text-ink hover:border-ink'
+          }`}
         >
           +
         </button>
@@ -119,8 +131,12 @@ function SearchResultRow({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={handleQuickMarkRead}
-          aria-label="Quick mark as read"
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-hairline text-base text-ink transition-colors hover:border-ink"
+          aria-label={markedRead ? 'Marked as read' : 'Quick mark as read'}
+          className={`flex h-8 w-8 items-center justify-center rounded-full border text-base transition-colors ${
+            markedRead
+              ? 'border-accent bg-accent-soft text-accent'
+              : 'border-hairline text-ink hover:border-ink'
+          }`}
         >
           ✓
         </button>

@@ -14,6 +14,7 @@ import { ReadToolbar, type SortMode } from './ReadToolbar'
 import { DetailModal } from '../shared/DetailModal'
 import { useLibrary } from '../../hooks/useLibrary'
 import { useLibraryActions } from '../../hooks/useLibraryActions'
+import { useCatalogueGenres } from '../../hooks/useCatalogueGenres'
 import { useGridSize, type GridSize } from '../../hooks/useGridSize'
 import type { BookFormat, UserBook } from '../../types/book'
 
@@ -33,7 +34,7 @@ function dateKey(book: UserBook): number {
 
 export function ReadGrid({ uid }: { uid: string | undefined }) {
   const { books, loading, rateBook, reorder } = useLibrary(uid)
-  const { changeCover, resetCover, setFinishedDate, setFormat, removeBook } =
+  const { changeCover, resetCover, setFinishedDate, setFormat, removeBook, updateDetails } =
     useLibraryActions(uid)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sortMode, setSortMode] = useState<SortMode>('custom')
@@ -42,6 +43,7 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
   const [reorderMode, setReorderMode] = useState(false)
   const { gridSize, setGridSize } = useGridSize()
   const gridClasses = `${GRID_BASE_CLASSES} ${GRID_SIZE_CLASSES[gridSize]}`
+  const catalogueGenres = useCatalogueGenres(uid)
 
   const selected = books.find((b) => b.googleVolumeId === selectedId) ?? null
 
@@ -180,6 +182,8 @@ export function ReadGrid({ uid }: { uid: string | undefined }) {
           onResetCover={() => resetCover(selected.googleVolumeId, selected.defaultCoverUrl)}
           onSetFinishedDate={(year, month) => setFinishedDate(selected.googleVolumeId, year, month)}
           onSetFormat={(format) => setFormat(selected.googleVolumeId, format)}
+          onSaveDetails={(details) => updateDetails(selected.googleVolumeId, details)}
+          genres={catalogueGenres}
           footer={
             <button
               onClick={async () => {

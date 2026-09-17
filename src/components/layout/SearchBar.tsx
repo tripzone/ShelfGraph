@@ -3,8 +3,15 @@ import { Autocomplete } from '../search/Autocomplete'
 import { CreateBookModal } from '../search/CreateBookModal'
 import { useBookSearch } from '../../hooks/useBookSearch'
 import { useLibraryActions } from '../../hooks/useLibraryActions'
+import { useCatalogueGenres } from '../../hooks/useCatalogueGenres'
 import { useUiStore } from '../../store/uiStore'
 import type { BookMetadata } from '../../types/book'
+
+const QUICK_ACTION_FEEDBACK_MS = 350
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 export function SearchBar({ uid }: { uid: string | undefined }) {
   const [query, setQuery] = useState('')
@@ -13,6 +20,7 @@ export function SearchBar({ uid }: { uid: string | undefined }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const { results, loading, error } = useBookSearch(query)
   const { addToQueue, markAsRead } = useLibraryActions(uid)
+  const catalogueGenres = useCatalogueGenres(uid)
   const openSheet = useUiStore((s) => s.openSheet)
   const pushToast = useUiStore((s) => s.pushToast)
 
@@ -32,15 +40,15 @@ export function SearchBar({ uid }: { uid: string | undefined }) {
   }
 
   async function handleQuickAdd(book: BookMetadata) {
-    setFocused(false)
-    await addToQueue(book)
+    await Promise.all([addToQueue(book), wait(QUICK_ACTION_FEEDBACK_MS)])
     pushToast('Added to Queue')
+    setFocused(false)
   }
 
   async function handleQuickMarkRead(book: BookMetadata) {
-    setFocused(false)
-    await markAsRead(book)
+    await Promise.all([markAsRead(book), wait(QUICK_ACTION_FEEDBACK_MS)])
     pushToast('Marked as Read')
+    setFocused(false)
   }
 
   return (
@@ -78,6 +86,7 @@ export function SearchBar({ uid }: { uid: string | undefined }) {
         <CreateBookModal
           initialTitle={query}
           uid={uid}
+          genres={catalogueGenres}
           onClose={() => setCreatingCustom(false)}
           onCreate={handleCreateCustom}
         />
