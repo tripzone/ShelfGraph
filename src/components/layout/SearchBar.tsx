@@ -25,12 +25,19 @@ export function SearchBar({ uid }: { uid: string | undefined }) {
   }
 
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div
+      ref={containerRef}
+      className="relative w-full"
+      onFocus={() => setFocused(true)}
+      onBlur={(e) => {
+        const next = e.relatedTarget as Node | null
+        if (next && containerRef.current?.contains(next)) return
+        setTimeout(() => setFocused(false), 150)
+      }}
+    >
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setTimeout(() => setFocused(false), 150)}
         type="search"
         inputMode="search"
         placeholder="Search for a book or author…"
@@ -44,6 +51,7 @@ export function SearchBar({ uid }: { uid: string | undefined }) {
           query={query}
           onSelectRow={handleSelectRow}
           onQuickAdd={handleQuickAdd}
+          onCreateCustom={handleSelectRow}
         />
       )}
     </div>
