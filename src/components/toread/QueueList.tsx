@@ -15,6 +15,8 @@ import { LibraryToolbar, type SortDirection, type SortMode } from '../shared/Lib
 import { useQueue } from '../../hooks/useQueue'
 import { useLibraryActions } from '../../hooks/useLibraryActions'
 import { useCatalogueGenres } from '../../hooks/useCatalogueGenres'
+import { useProfile } from '../../hooks/useProfile'
+import { setShowPageCountToRead } from '../../firebase/profile'
 import { useGridSize, type GridSize } from '../../hooks/useGridSize'
 import type { BookFormat, UserBook } from '../../types/book'
 
@@ -39,6 +41,7 @@ export function QueueList({
   const { books, loading, reorder } = useQueue(uid)
   const { moveToRead, removeBook, changeCover, resetCover, updateDetails } = useLibraryActions(uid)
   const catalogueGenres = useCatalogueGenres(uid)
+  const { profile } = useProfile(uid)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [reorderMode, setReorderMode] = useState(false)
   const [sortMode, setSortMode] = useState<SortMode>('custom')
@@ -178,6 +181,10 @@ export function QueueList({
         reorderMode={reorderMode}
         onExitReorderMode={() => setReorderMode(false)}
         uid={readOnly ? undefined : uid}
+        pageCountEnabled={profile.showPageCountToRead}
+        onPageCountEnabledChange={
+          !readOnly && uid ? (enabled) => setShowPageCountToRead(uid, enabled) : undefined
+        }
       />
 
       {books.length === 0 ? (
@@ -204,6 +211,7 @@ export function QueueList({
                   position={queuePositions.get(book.googleVolumeId) ?? index + 1}
                   onClick={() => handleTileTap(book)}
                   wiggleDelayMs={(index % 4) * 30}
+                  showPageCount={profile.showPageCountToRead}
                 />
               ))}
             </div>
@@ -221,6 +229,7 @@ export function QueueList({
                     book={book}
                     position={queuePositions.get(book.googleVolumeId) ?? 0}
                     onClick={() => handleTileTap(book)}
+                    showPageCount={profile.showPageCountToRead}
                   />
                 ))}
               </div>
@@ -236,6 +245,7 @@ export function QueueList({
               position={queuePositions.get(book.googleVolumeId) ?? index + 1}
               onClick={() => handleTileTap(book)}
               onLongPress={reorderCapable ? () => setReorderMode(true) : undefined}
+              showPageCount={profile.showPageCountToRead}
             />
           ))}
         </div>

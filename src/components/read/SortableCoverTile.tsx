@@ -13,10 +13,12 @@ export function SortableCoverTile({
   book,
   onClick,
   wiggleDelayMs,
+  showPageCount,
 }: {
   book: UserBook
   onClick: () => void
   wiggleDelayMs: number
+  showPageCount?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: book.googleVolumeId,
@@ -30,7 +32,13 @@ export function SortableCoverTile({
       {...listeners}
       className={`touch-none ${isDragging ? 'z-10 opacity-80' : ''}`}
     >
-      <CoverTile book={book} onClick={onClick} wiggle={!isDragging} wiggleDelayMs={wiggleDelayMs} />
+      <CoverTile
+        book={book}
+        onClick={onClick}
+        wiggle={!isDragging}
+        wiggleDelayMs={wiggleDelayMs}
+        showPageCount={showPageCount}
+      />
     </div>
   )
 }

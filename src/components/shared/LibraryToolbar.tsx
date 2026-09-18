@@ -103,6 +103,10 @@ interface LibraryToolbarProps {
   onExitReorderMode: () => void
   /** The signed-in owner's own uid — shows the Account section (owner view only). */
   uid?: string
+  /** Current value of this tab's "show page count" preference. */
+  pageCountEnabled?: boolean
+  /** Provided only for the owner (undefined in read-only/visitor view) — shows the toggle. */
+  onPageCountEnabledChange?: (enabled: boolean) => void
 }
 
 export function LibraryToolbar({
@@ -122,6 +126,8 @@ export function LibraryToolbar({
   reorderMode,
   onExitReorderMode,
   uid,
+  pageCountEnabled,
+  onPageCountEnabledChange,
 }: LibraryToolbarProps) {
   const [openMenu, setOpenMenu] = useState<'sort' | 'filter' | 'settings' | 'profile' | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -355,6 +361,93 @@ export function LibraryToolbar({
         )}
       </div>
 
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setOpenMenu((m) => (m === 'settings' ? null : 'settings'))}
+          aria-label="Settings"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition-colors hover:bg-canvas hover:text-ink"
+        >
+          <SettingsIcon />
+        </button>
+        {openMenu === 'settings' && (
+          <div className="absolute left-0 top-full z-30 mt-1 w-48 rounded-lg border border-hairline bg-surface py-1 shadow-lg">
+            <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
+              Appearance
+            </p>
+            <div className="flex gap-1.5 px-3 pb-1.5 pt-0.5">
+              {(['light', 'dark'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => {
+                    setTheme(mode)
+                    setOpenMenu(null)
+                  }}
+                  aria-label={mode === 'dark' ? 'Dark mode' : 'Light mode'}
+                  className={`flex flex-1 items-center justify-center rounded-full border py-1.5 ${
+                    mode === theme
+                      ? 'border-ink bg-ink text-ink-inverse'
+                      : 'border-hairline text-ink'
+                  }`}
+                >
+                  {mode === 'dark' ? <MoonIcon /> : <SunIcon />}
+                </button>
+              ))}
+            </div>
+
+            <div className="my-1 border-t border-hairline" />
+
+            <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
+              Grid Size
+            </p>
+            <div className="flex gap-1.5 px-3 pb-1.5 pt-0.5">
+              {GRID_SIZES.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => {
+                    onGridSizeChange(size)
+                    setOpenMenu(null)
+                  }}
+                  className={`flex-1 rounded-full border py-1 text-xs font-medium ${
+                    size === gridSize
+                      ? 'border-ink bg-ink text-ink-inverse'
+                      : 'border-hairline text-ink'
+                  }`}
+                >
+                  {GRID_SIZE_LABELS[size]}
+                </button>
+              ))}
+            </div>
+
+            {onPageCountEnabledChange && (
+              <>
+                <div className="my-1 border-t border-hairline" />
+                <div className="flex items-center justify-between px-3 py-1.5">
+                  <span className="text-xs font-medium text-ink">Show page count</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={pageCountEnabled}
+                    onClick={() => onPageCountEnabledChange(!pageCountEnabled)}
+                    className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                      pageCountEnabled ? 'bg-accent' : 'bg-hairline'
+                    }`}
+                  >
+                    <span
+                      className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                        pageCountEnabled ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="ml-auto flex items-center gap-1">
         {uid && (
           <div className="relative">
@@ -421,8 +514,8 @@ export function LibraryToolbar({
                     }`}
                   >
                     <span
-                      className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                        profile.isPublic ? 'translate-x-4' : 'translate-x-0.5'
+                      className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                        profile.isPublic ? 'translate-x-4' : 'translate-x-0'
                       }`}
                     />
                   </button>
@@ -444,69 +537,6 @@ export function LibraryToolbar({
             )}
           </div>
         )}
-
-        <div className="relative">
-        <button
-          type="button"
-          onClick={() => setOpenMenu((m) => (m === 'settings' ? null : 'settings'))}
-          aria-label="Settings"
-          className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition-colors hover:bg-canvas hover:text-ink"
-        >
-          <SettingsIcon />
-        </button>
-        {openMenu === 'settings' && (
-          <div className="absolute right-0 top-full z-30 mt-1 w-48 rounded-lg border border-hairline bg-surface py-1 shadow-lg">
-            <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
-              Appearance
-            </p>
-            <div className="flex gap-1.5 px-3 pb-1.5 pt-0.5">
-              {(['light', 'dark'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => {
-                    setTheme(mode)
-                    setOpenMenu(null)
-                  }}
-                  aria-label={mode === 'dark' ? 'Dark mode' : 'Light mode'}
-                  className={`flex flex-1 items-center justify-center rounded-full border py-1.5 ${
-                    mode === theme
-                      ? 'border-ink bg-ink text-ink-inverse'
-                      : 'border-hairline text-ink'
-                  }`}
-                >
-                  {mode === 'dark' ? <MoonIcon /> : <SunIcon />}
-                </button>
-              ))}
-            </div>
-
-            <div className="my-1 border-t border-hairline" />
-
-            <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
-              Grid Size
-            </p>
-            <div className="flex gap-1.5 px-3 pb-1.5 pt-0.5">
-              {GRID_SIZES.map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  onClick={() => {
-                    onGridSizeChange(size)
-                    setOpenMenu(null)
-                  }}
-                  className={`flex-1 rounded-full border py-1 text-xs font-medium ${
-                    size === gridSize
-                      ? 'border-ink bg-ink text-ink-inverse'
-                      : 'border-hairline text-ink'
-                  }`}
-                >
-                  {GRID_SIZE_LABELS[size]}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
       </div>
     </div>
   )

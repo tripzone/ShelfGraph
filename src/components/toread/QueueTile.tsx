@@ -13,6 +13,8 @@ interface QueueTileProps {
   onLongPress?: () => void
   wiggle?: boolean
   wiggleDelayMs?: number
+  /** Shows the page-count row (icon, number, density bar) at the bottom. On by default. */
+  showPageCount?: boolean
 }
 
 export function QueueTile({
@@ -22,6 +24,7 @@ export function QueueTile({
   onLongPress,
   wiggle,
   wiggleDelayMs = 0,
+  showPageCount = true,
 }: QueueTileProps) {
   const timerRef = useRef<number | null>(null)
   const startRef = useRef<{ x: number; y: number } | null>(null)
@@ -90,37 +93,41 @@ export function QueueTile({
         {position}
       </span>
 
-      <span className="pointer-events-none absolute inset-x-0 bottom-0 flex h-1/5 flex-col justify-center gap-0.5 bg-black/70 px-1.5">
-        <span className="flex items-center gap-1.5">
-          <span className="flex shrink-0 items-center gap-1 text-[10px] font-semibold leading-none text-white">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.8}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-3 w-3 shrink-0"
-            >
-              <path d="M12 6.5c-1.5-1-3.5-1.5-5.5-1.5S3 5.3 3 5.3v13.4s2-.7 3.5-.7 4 .5 5.5 1.5m0-13v13m0-13c1.5-1 3.5-1.5 5.5-1.5S21 5.3 21 5.3v13.4s-2-.7-3.5-.7-4 .5-5.5 1.5" />
-            </svg>
-            {book.pageCount || '—'}
-          </span>
-          {/* Density bar: full width at 1000 pages, half at 500, and so on. */}
-          <span className="h-[2px] flex-1 bg-white/20">
-            <span
-              className="block h-full bg-white/90"
-              style={{ width: `${Math.min(100, ((book.pageCount ?? 0) / 1000) * 100)}%` }}
-            />
-          </span>
+      {(showPageCount || book.propensityScore != null) && (
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 flex h-1/5 flex-col justify-center gap-0.5 bg-black/70 px-1.5">
+          {showPageCount && (
+            <span className="flex items-center gap-1.5">
+              <span className="flex shrink-0 items-center gap-1 text-[10px] font-semibold leading-none text-white">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-3 w-3 shrink-0"
+                >
+                  <path d="M12 6.5c-1.5-1-3.5-1.5-5.5-1.5S3 5.3 3 5.3v13.4s2-.7 3.5-.7 4 .5 5.5 1.5m0-13v13m0-13c1.5-1 3.5-1.5 5.5-1.5S21 5.3 21 5.3v13.4s-2-.7-3.5-.7-4 .5-5.5 1.5" />
+                </svg>
+                {book.pageCount || '—'}
+              </span>
+              {/* Density bar: full width at 1000 pages, half at 500, and so on. */}
+              <span className="h-[2px] flex-1 bg-white/20">
+                <span
+                  className="block h-full bg-white/90"
+                  style={{ width: `${Math.min(100, ((book.pageCount ?? 0) / 1000) * 100)}%` }}
+                />
+              </span>
+            </span>
+          )}
+          {book.propensityScore != null && (
+            <span className="text-[10px] font-semibold leading-none text-white">
+              {book.propensityScore}% Match
+            </span>
+          )}
         </span>
-        {book.propensityScore != null && (
-          <span className="text-[10px] font-semibold leading-none text-white">
-            {book.propensityScore}% Match
-          </span>
-        )}
-      </span>
+      )}
     </button>
   )
 }

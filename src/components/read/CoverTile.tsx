@@ -13,6 +13,8 @@ interface CoverTileProps {
   wiggleDelayMs?: number
   /** Shows the owner's star rating as a badge on the cover (someone else's profile). */
   showRating?: boolean
+  /** Shows a thin page-count density line at the bottom of the cover. Off by default. */
+  showPageCount?: boolean
 }
 
 export function CoverTile({
@@ -22,6 +24,7 @@ export function CoverTile({
   wiggle,
   wiggleDelayMs = 0,
   showRating,
+  showPageCount,
 }: CoverTileProps) {
   const timerRef = useRef<number | null>(null)
   const startRef = useRef<{ x: number; y: number } | null>(null)
@@ -92,17 +95,31 @@ export function CoverTile({
           {book.title}
         </div>
       )}
-      {showRating && book.rating != null && (
-        <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center gap-[1px] bg-black/70 py-1">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <span
-              key={star}
-              className={`text-xs leading-none ${star <= book.rating! ? 'text-white' : 'text-white/30'}`}
-            >
-              ★
+      {(showRating || showPageCount) && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col">
+          {showRating && book.rating != null && (
+            <span className="flex items-center justify-center gap-[1px] bg-black/70 py-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <span
+                  key={star}
+                  className={`text-xs leading-none ${
+                    star <= book.rating! ? 'text-white' : 'text-white/30'
+                  }`}
+                >
+                  ★
+                </span>
+              ))}
             </span>
-          ))}
-        </span>
+          )}
+          {showPageCount && (
+            <span className="h-[2px] bg-white/20">
+              <span
+                className="block h-full bg-white/90"
+                style={{ width: `${Math.min(100, ((book.pageCount ?? 0) / 1000) * 100)}%` }}
+              />
+            </span>
+          )}
+        </div>
       )}
     </button>
   )

@@ -15,6 +15,8 @@ import { DetailModal } from '../shared/DetailModal'
 import { useLibrary } from '../../hooks/useLibrary'
 import { useLibraryActions } from '../../hooks/useLibraryActions'
 import { useCatalogueGenres } from '../../hooks/useCatalogueGenres'
+import { useProfile } from '../../hooks/useProfile'
+import { setShowPageCountRead } from '../../firebase/profile'
 import { useGridSize, type GridSize } from '../../hooks/useGridSize'
 import type { BookFormat, UserBook } from '../../types/book'
 
@@ -54,6 +56,7 @@ export function ReadGrid({
   const gridClasses = `${GRID_BASE_CLASSES} ${GRID_SIZE_CLASSES[gridSize]}`
   const groupGridClasses = `${GROUP_GRID_BASE_CLASSES} ${GRID_SIZE_CLASSES[gridSize]}`
   const catalogueGenres = useCatalogueGenres(uid)
+  const { profile } = useProfile(uid)
 
   const selected = books.find((b) => b.googleVolumeId === selectedId) ?? null
 
@@ -176,6 +179,10 @@ export function ReadGrid({
         reorderMode={reorderMode}
         onExitReorderMode={() => setReorderMode(false)}
         uid={readOnly ? undefined : uid}
+        pageCountEnabled={profile.showPageCountRead}
+        onPageCountEnabledChange={
+          !readOnly && uid ? (enabled) => setShowPageCountRead(uid, enabled) : undefined
+        }
       />
 
       {books.length === 0 ? (
@@ -203,6 +210,7 @@ export function ReadGrid({
                   book={book}
                   onClick={() => handleTileTap(book)}
                   wiggleDelayMs={(index % 4) * 30}
+                  showPageCount={profile.showPageCountRead}
                 />
               ))}
             </div>
@@ -220,6 +228,7 @@ export function ReadGrid({
                     book={book}
                     onClick={() => handleTileTap(book)}
                     showRating={readOnly}
+                    showPageCount={profile.showPageCountRead}
                   />
                 ))}
               </div>
@@ -235,6 +244,7 @@ export function ReadGrid({
               onClick={() => handleTileTap(book)}
               onLongPress={reorderCapable ? () => setReorderMode(true) : undefined}
               showRating={readOnly}
+              showPageCount={profile.showPageCountRead}
             />
           ))}
         </div>
