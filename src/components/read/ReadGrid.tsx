@@ -10,7 +10,7 @@ import {
 import { SortableContext, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable'
 import { CoverTile } from './CoverTile'
 import { SortableCoverTile } from './SortableCoverTile'
-import { ReadToolbar, type SortDirection, type SortMode } from './ReadToolbar'
+import { LibraryToolbar, type SortDirection, type SortMode } from '../shared/LibraryToolbar'
 import { DetailModal } from '../shared/DetailModal'
 import { useLibrary } from '../../hooks/useLibrary'
 import { useLibraryActions } from '../../hooks/useLibraryActions'
@@ -162,7 +162,7 @@ export function ReadGrid({
 
   return (
     <>
-      <ReadToolbar
+      <LibraryToolbar
         sortMode={sortMode}
         sortDirection={sortDirection}
         onSortModeChange={handleSortModeChange}

@@ -22,15 +22,26 @@ export function StatsSection({ uid }: { uid: string | undefined }) {
               <ReadingActivityChart books={books} />
             </>
           )}
+          <Link
+            to="/discover/stats"
+            aria-label="See detailed stats"
+            className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-canvas hover:text-ink"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+            >
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </Link>
         </div>
       )}
-
-      <Link
-        to="/discover/stats"
-        className="mt-2 inline-block px-1 text-sm font-medium text-ink underline underline-offset-2"
-      >
-        See detailed stats
-      </Link>
     </section>
   )
 }

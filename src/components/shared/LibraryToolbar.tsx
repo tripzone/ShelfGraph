@@ -16,7 +16,7 @@ const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 export type SortMode = 'custom' | 'title' | 'date' | 'genre'
 export type SortDirection = 'asc' | 'desc'
 
-const SORT_LABELS: Record<SortMode, string> = {
+const BASE_SORT_LABELS: Record<SortMode, string> = {
   custom: 'Custom',
   title: 'Title',
   date: 'Date Finished',
@@ -37,7 +37,7 @@ const GRID_SIZE_LABELS: Record<GridSize, string> = {
 }
 
 const FORMATS = Object.keys(FORMAT_LABELS) as BookFormat[]
-const SORT_MODES = Object.keys(SORT_LABELS) as SortMode[]
+const SORT_MODES = Object.keys(BASE_SORT_LABELS) as SortMode[]
 const GRID_SIZES = Object.keys(GRID_SIZE_LABELS) as GridSize[]
 
 function SortIcon() {
@@ -82,10 +82,16 @@ function SettingsIcon() {
   )
 }
 
-interface ReadToolbarProps {
+interface LibraryToolbarProps {
   sortMode: SortMode
   sortDirection: SortDirection
   onSortModeChange: (mode: SortMode) => void
+  /** Label for the 'date' sort mode — what "date" means differs by tab (finished vs. added). */
+  dateSortLabel?: string
+  /** Label for the 'custom' sort mode — e.g. "Ranked" for the To-Read queue. */
+  customSortLabel?: string
+  /** Which sort modes to offer, and in what order. Defaults to all four. */
+  sortModes?: SortMode[]
   genres: string[]
   genreFilter: Set<string>
   onGenreFilterChange: (next: Set<string>) => void
@@ -99,10 +105,13 @@ interface ReadToolbarProps {
   uid?: string
 }
 
-export function ReadToolbar({
+export function LibraryToolbar({
   sortMode,
   sortDirection,
   onSortModeChange,
+  dateSortLabel,
+  customSortLabel,
+  sortModes = SORT_MODES,
   genres,
   genreFilter,
   onGenreFilterChange,
@@ -113,10 +122,15 @@ export function ReadToolbar({
   reorderMode,
   onExitReorderMode,
   uid,
-}: ReadToolbarProps) {
-  const [openMenu, setOpenMenu] = useState<'sort' | 'filter' | 'settings' | null>(null)
+}: LibraryToolbarProps) {
+  const [openMenu, setOpenMenu] = useState<'sort' | 'filter' | 'settings' | 'profile' | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const { theme, setTheme } = useTheme()
+  const sortLabels = {
+    ...BASE_SORT_LABELS,
+    ...(dateSortLabel ? { date: dateSortLabel } : null),
+    ...(customSortLabel ? { custom: customSortLabel } : null),
+  }
 
   const { profile } = useProfile(uid)
   const [usernameInput, setUsernameInput] = useState('')
@@ -234,7 +248,7 @@ export function ReadToolbar({
         <button
           type="button"
           onClick={() => setOpenMenu((m) => (m === 'sort' ? null : 'sort'))}
-          aria-label={`Sort: ${SORT_LABELS[sortMode]}${
+          aria-label={`Sort: ${sortLabels[sortMode]}${
             sortMode !== 'custom' ? (sortDirection === 'asc' ? ' ascending' : ' descending') : ''
           }`}
           className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition-colors hover:bg-canvas hover:text-ink"
@@ -243,7 +257,7 @@ export function ReadToolbar({
         </button>
         {openMenu === 'sort' && (
           <div className="absolute left-0 top-full z-30 mt-1 w-40 rounded-lg border border-hairline bg-surface py-1 shadow-lg">
-            {SORT_MODES.map((mode) => (
+            {sortModes.map((mode) => (
               <button
                 key={mode}
                 type="button"
@@ -255,7 +269,7 @@ export function ReadToolbar({
                   mode === sortMode ? 'font-semibold text-ink' : 'text-ink/80'
                 }`}
               >
-                {SORT_LABELS[mode]}
+                {sortLabels[mode]}
                 {mode === sortMode && mode !== 'custom' && (
                   <span aria-hidden="true" className="text-xs text-muted">
                     {sortDirection === 'asc' ? '↑' : '↓'}
@@ -342,70 +356,20 @@ export function ReadToolbar({
       </div>
 
       <div className="ml-auto flex items-center gap-1">
-        <div className="relative">
-        <button
-          type="button"
-          onClick={() => setOpenMenu((m) => (m === 'settings' ? null : 'settings'))}
-          aria-label="Settings"
-          className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition-colors hover:bg-canvas hover:text-ink"
-        >
-          <SettingsIcon />
-        </button>
-        {openMenu === 'settings' && (
-          <div className="absolute right-0 top-full z-30 mt-1 w-64 rounded-lg border border-hairline bg-surface py-1 shadow-lg">
-            <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
-              Appearance
-            </p>
-            <div className="flex gap-1.5 px-3 pb-1.5 pt-0.5">
-              {(['light', 'dark'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => {
-                    setTheme(mode)
-                    setOpenMenu(null)
-                  }}
-                  aria-label={mode === 'dark' ? 'Dark mode' : 'Light mode'}
-                  className={`flex flex-1 items-center justify-center rounded-full border py-1.5 ${
-                    mode === theme
-                      ? 'border-ink bg-ink text-ink-inverse'
-                      : 'border-hairline text-ink'
-                  }`}
-                >
-                  {mode === 'dark' ? <MoonIcon /> : <SunIcon />}
-                </button>
-              ))}
-            </div>
-
-            <div className="my-1 border-t border-hairline" />
-
-            <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
-              Grid Size
-            </p>
-            <div className="flex gap-1.5 px-3 pb-1.5 pt-0.5">
-              {GRID_SIZES.map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  onClick={() => {
-                    onGridSizeChange(size)
-                    setOpenMenu(null)
-                  }}
-                  className={`flex-1 rounded-full border py-1 text-xs font-medium ${
-                    size === gridSize
-                      ? 'border-ink bg-ink text-ink-inverse'
-                      : 'border-hairline text-ink'
-                  }`}
-                >
-                  {GRID_SIZE_LABELS[size]}
-                </button>
-              ))}
-            </div>
-
-            {uid && (
-              <>
-                <div className="my-1 border-t border-hairline" />
-
+        {uid && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setOpenMenu((m) => (m === 'profile' ? null : 'profile'))}
+              aria-label="Profile"
+              className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-hairline ring-1 ring-hairline transition-opacity hover:opacity-80"
+            >
+              {profile.photoURL && (
+                <img src={profile.photoURL} alt="" className="h-full w-full object-cover" />
+              )}
+            </button>
+            {openMenu === 'profile' && (
+              <div className="absolute right-0 top-full z-30 mt-1 w-64 rounded-lg border border-hairline bg-surface py-1 shadow-lg">
                 <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
                   Username
                 </p>
@@ -476,8 +440,70 @@ export function ReadToolbar({
                 >
                   Sign out
                 </button>
-              </>
+              </div>
             )}
+          </div>
+        )}
+
+        <div className="relative">
+        <button
+          type="button"
+          onClick={() => setOpenMenu((m) => (m === 'settings' ? null : 'settings'))}
+          aria-label="Settings"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition-colors hover:bg-canvas hover:text-ink"
+        >
+          <SettingsIcon />
+        </button>
+        {openMenu === 'settings' && (
+          <div className="absolute right-0 top-full z-30 mt-1 w-48 rounded-lg border border-hairline bg-surface py-1 shadow-lg">
+            <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
+              Appearance
+            </p>
+            <div className="flex gap-1.5 px-3 pb-1.5 pt-0.5">
+              {(['light', 'dark'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => {
+                    setTheme(mode)
+                    setOpenMenu(null)
+                  }}
+                  aria-label={mode === 'dark' ? 'Dark mode' : 'Light mode'}
+                  className={`flex flex-1 items-center justify-center rounded-full border py-1.5 ${
+                    mode === theme
+                      ? 'border-ink bg-ink text-ink-inverse'
+                      : 'border-hairline text-ink'
+                  }`}
+                >
+                  {mode === 'dark' ? <MoonIcon /> : <SunIcon />}
+                </button>
+              ))}
+            </div>
+
+            <div className="my-1 border-t border-hairline" />
+
+            <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
+              Grid Size
+            </p>
+            <div className="flex gap-1.5 px-3 pb-1.5 pt-0.5">
+              {GRID_SIZES.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => {
+                    onGridSizeChange(size)
+                    setOpenMenu(null)
+                  }}
+                  className={`flex-1 rounded-full border py-1 text-xs font-medium ${
+                    size === gridSize
+                      ? 'border-ink bg-ink text-ink-inverse'
+                      : 'border-hairline text-ink'
+                  }`}
+                >
+                  {GRID_SIZE_LABELS[size]}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

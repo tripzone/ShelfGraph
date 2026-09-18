@@ -6,9 +6,15 @@ export interface OwnProfile {
   username: string | null
   usernameLower: string | null
   isPublic: boolean
+  photoURL: string | null
 }
 
-const EMPTY_PROFILE: OwnProfile = { username: null, usernameLower: null, isPublic: false }
+const EMPTY_PROFILE: OwnProfile = {
+  username: null,
+  usernameLower: null,
+  isPublic: false,
+  photoURL: null,
+}
 
 /** Live view of the signed-in user's own profile fields (username, public/private). */
 export function useProfile(uid: string | undefined) {
@@ -28,6 +34,7 @@ export function useProfile(uid: string | undefined) {
         username: data?.username ?? null,
         usernameLower: data?.usernameLower ?? null,
         isPublic: data?.isPublic ?? false,
+        photoURL: data?.photoURL ?? null,
       })
       setLoading(false)
     })

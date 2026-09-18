@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   DndContext,
   PointerSensor,
@@ -11,11 +11,22 @@ import { SortableContext, arrayMove, rectSortingStrategy } from '@dnd-kit/sortab
 import { QueueTile } from './QueueTile'
 import { SortableQueueTile } from './SortableQueueTile'
 import { DetailModal } from '../shared/DetailModal'
+import { LibraryToolbar, type SortDirection, type SortMode } from '../shared/LibraryToolbar'
 import { useQueue } from '../../hooks/useQueue'
 import { useLibraryActions } from '../../hooks/useLibraryActions'
 import { useCatalogueGenres } from '../../hooks/useCatalogueGenres'
+import { useGridSize, type GridSize } from '../../hooks/useGridSize'
+import type { BookFormat, UserBook } from '../../types/book'
 
-const GRID_CLASSES = 'mx-auto grid max-w-3xl grid-cols-3 gap-1 px-1 pb-24 sm:grid-cols-4 sm:gap-2 sm:px-4'
+const GRID_BASE_CLASSES = 'mx-auto grid max-w-3xl gap-1 px-1 pb-24 sm:gap-2 sm:px-4'
+const GROUP_GRID_BASE_CLASSES = 'grid gap-1 sm:gap-2'
+
+const GRID_SIZE_CLASSES: Record<GridSize, string> = {
+  xs: 'grid-cols-5 sm:grid-cols-7',
+  s: 'grid-cols-4 sm:grid-cols-5',
+  m: 'grid-cols-3 sm:grid-cols-4',
+  l: 'grid-cols-2 sm:grid-cols-3',
+}
 
 export function QueueList({
   uid,
@@ -30,12 +41,95 @@ export function QueueList({
   const catalogueGenres = useCatalogueGenres(uid)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [reorderMode, setReorderMode] = useState(false)
+  const [sortMode, setSortMode] = useState<SortMode>('custom')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [genreFilter, setGenreFilter] = useState<Set<string>>(new Set())
+  const [formatFilter, setFormatFilter] = useState<Set<BookFormat>>(new Set())
+  const { gridSize, setGridSize } = useGridSize()
+  const gridClasses = `${GRID_BASE_CLASSES} ${GRID_SIZE_CLASSES[gridSize]}`
+  const groupGridClasses = `${GROUP_GRID_BASE_CLASSES} ${GRID_SIZE_CLASSES[gridSize]}`
+
+  // Position badges always reflect each book's place in the actual reading queue,
+  // even while the grid below is displayed sorted or filtered a different way.
+  const queuePositions = useMemo(() => {
+    const map = new Map<string, number>()
+    books.forEach((b, i) => map.set(b.googleVolumeId, i + 1))
+    return map
+  }, [books])
+
+  const genres = useMemo(
+    () => Array.from(new Set(books.flatMap((b) => b.categories))).sort(),
+    [books],
+  )
+
+  const filtersActive = genreFilter.size > 0 || formatFilter.size > 0
+
+  function handleSortModeChange(mode: SortMode) {
+    if (mode === sortMode) {
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
+      return
+    }
+    setSortMode(mode)
+    setSortDirection('asc')
+  }
+
+  const visibleBooks = useMemo(() => {
+    let list = books
+    if (genreFilter.size > 0) {
+      list = list.filter((b) => b.categories.some((c) => genreFilter.has(c)))
+    }
+    if (formatFilter.size > 0) {
+      list = list.filter((b) => b.format && formatFilter.has(b.format))
+    }
+
+    const dir = sortDirection === 'asc' ? 1 : -1
+    const sorted = [...list]
+    switch (sortMode) {
+      case 'title':
+        sorted.sort((a, b) => dir * a.title.localeCompare(b.title))
+        break
+      case 'date':
+        sorted.sort((a, b) => dir * a.addedAt.localeCompare(b.addedAt))
+        break
+      case 'genre':
+        sorted.sort(
+          (a, b) =>
+            dir * (a.categories[0] ?? '').localeCompare(b.categories[0] ?? '') ||
+            a.title.localeCompare(b.title),
+        )
+        break
+      case 'custom':
+      default:
+        sorted.sort((a, b) => a.order - b.order)
+    }
+    return sorted
+  }, [books, sortMode, sortDirection, genreFilter, formatFilter])
+
+  // Genre headings only make sense once the list is grouped/sorted by genre — grouping
+  // by iteration order works because visibleBooks is already sorted (genre, then title).
+  const genreGroups = useMemo(() => {
+    if (sortMode !== 'genre') return null
+    const groups = new Map<string, UserBook[]>()
+    for (const book of visibleBooks) {
+      const key = book.categories[0] || 'Uncategorized'
+      const group = groups.get(key)
+      if (group) group.push(book)
+      else groups.set(key, [book])
+    }
+    return Array.from(groups.entries())
+  }, [visibleBooks, sortMode])
+
+  const reorderCapable = !readOnly && sortMode === 'custom' && !filtersActive
+  const dragEnabled = reorderCapable && reorderMode
+
   const selected = books.find((b) => b.googleVolumeId === selectedId) ?? null
-  const selectedIndex = selectedId ? books.findIndex((b) => b.googleVolumeId === selectedId) : -1
+  const selectedIndex = selectedId
+    ? visibleBooks.findIndex((b) => b.googleVolumeId === selectedId)
+    : -1
 
   function handleNavigate(direction: -1 | 1) {
     if (selectedIndex === -1) return
-    const nextBook = books[selectedIndex + direction]
+    const nextBook = visibleBooks[selectedIndex + direction]
     if (nextBook) setSelectedId(nextBook.googleVolumeId)
   }
 
@@ -44,7 +138,7 @@ export function QueueList({
   // 2D drag is never ambiguous with vertical scrolling.
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
-  function handleTileTap(book: (typeof books)[number]) {
+  function handleTileTap(book: UserBook) {
     if (reorderMode) {
       setReorderMode(false)
       return
@@ -55,9 +149,9 @@ export function QueueList({
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
-    const oldIndex = books.findIndex((b) => b.googleVolumeId === active.id)
-    const newIndex = books.findIndex((b) => b.googleVolumeId === over.id)
-    const reordered = arrayMove(books, oldIndex, newIndex)
+    const oldIndex = visibleBooks.findIndex((b) => b.googleVolumeId === active.id)
+    const newIndex = visibleBooks.findIndex((b) => b.googleVolumeId === over.id)
+    const reordered = arrayMove(visibleBooks, oldIndex, newIndex)
     reorder(reordered.map((b) => b.googleVolumeId))
   }
 
@@ -65,54 +159,49 @@ export function QueueList({
     return <p className="px-4 py-10 text-center text-sm text-muted">Loading your queue…</p>
   }
 
-  if (books.length === 0) {
-    return (
-      <div className="px-4 py-16 text-center">
-        <p className="text-sm text-muted">
-          {readOnly ? 'Nothing here yet.' : 'Your queue is empty. Search for a book above and add it.'}
-        </p>
-      </div>
-    )
-  }
-
   return (
     <>
-      {reorderMode && (
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-1">
-          <p className="text-xs text-muted">Drag covers to reorder</p>
-          <button
-            type="button"
-            onClick={() => setReorderMode(false)}
-            className="rounded-full border border-hairline px-3 py-1 text-xs font-semibold text-ink"
-          >
-            Done
-          </button>
-        </div>
-      )}
+      <LibraryToolbar
+        sortMode={sortMode}
+        sortDirection={sortDirection}
+        onSortModeChange={handleSortModeChange}
+        dateSortLabel="Date Added"
+        customSortLabel="Ranked"
+        sortModes={['custom', 'genre', 'title']}
+        genres={genres}
+        genreFilter={genreFilter}
+        onGenreFilterChange={setGenreFilter}
+        formatFilter={formatFilter}
+        onFormatFilterChange={setFormatFilter}
+        gridSize={gridSize}
+        onGridSizeChange={setGridSize}
+        reorderMode={reorderMode}
+        onExitReorderMode={() => setReorderMode(false)}
+        uid={readOnly ? undefined : uid}
+      />
 
-      {readOnly ? (
-        <div className={GRID_CLASSES}>
-          {books.map((book, index) => (
-            <QueueTile
-              key={book.googleVolumeId}
-              book={book}
-              position={index + 1}
-              onClick={() => setSelectedId(book.googleVolumeId)}
-            />
-          ))}
+      {books.length === 0 ? (
+        <div className="px-4 py-16 text-center">
+          <p className="text-sm text-muted">
+            {readOnly ? 'Nothing here yet.' : 'Your queue is empty. Search for a book above and add it.'}
+          </p>
         </div>
-      ) : reorderMode ? (
+      ) : visibleBooks.length === 0 ? (
+        <div className="px-4 py-16 text-center">
+          <p className="text-sm text-muted">No books match the current filters.</p>
+        </div>
+      ) : dragEnabled ? (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext
-            items={books.map((b) => b.googleVolumeId)}
+            items={visibleBooks.map((b) => b.googleVolumeId)}
             strategy={rectSortingStrategy}
           >
-            <div className={GRID_CLASSES}>
-              {books.map((book, index) => (
+            <div className={gridClasses}>
+              {visibleBooks.map((book, index) => (
                 <SortableQueueTile
                   key={book.googleVolumeId}
                   book={book}
-                  position={index + 1}
+                  position={queuePositions.get(book.googleVolumeId) ?? index + 1}
                   onClick={() => handleTileTap(book)}
                   wiggleDelayMs={(index % 4) * 30}
                 />
@@ -120,15 +209,33 @@ export function QueueList({
             </div>
           </SortableContext>
         </DndContext>
+      ) : genreGroups ? (
+        <div className="mx-auto max-w-3xl px-1 pb-24 sm:px-4">
+          {genreGroups.map(([genre, groupBooks]) => (
+            <div key={genre} className="mb-6 last:mb-0">
+              <h3 className="mb-1.5 px-1 text-sm font-semibold text-ink sm:px-1">{genre}</h3>
+              <div className={groupGridClasses}>
+                {groupBooks.map((book) => (
+                  <QueueTile
+                    key={book.googleVolumeId}
+                    book={book}
+                    position={queuePositions.get(book.googleVolumeId) ?? 0}
+                    onClick={() => handleTileTap(book)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
-        <div className={GRID_CLASSES}>
-          {books.map((book, index) => (
+        <div className={gridClasses}>
+          {visibleBooks.map((book, index) => (
             <QueueTile
               key={book.googleVolumeId}
               book={book}
-              position={index + 1}
+              position={queuePositions.get(book.googleVolumeId) ?? index + 1}
               onClick={() => handleTileTap(book)}
-              onLongPress={() => setReorderMode(true)}
+              onLongPress={reorderCapable ? () => setReorderMode(true) : undefined}
             />
           ))}
         </div>
@@ -148,7 +255,7 @@ export function QueueList({
           genres={catalogueGenres}
           onPrevious={selectedIndex > 0 ? () => handleNavigate(-1) : undefined}
           onNext={
-            selectedIndex !== -1 && selectedIndex < books.length - 1
+            selectedIndex !== -1 && selectedIndex < visibleBooks.length - 1
               ? () => handleNavigate(1)
               : undefined
           }
