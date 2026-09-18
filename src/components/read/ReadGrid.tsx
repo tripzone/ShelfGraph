@@ -36,10 +36,13 @@ function dateKey(book: UserBook): number {
 export function ReadGrid({
   uid,
   readOnly = false,
+  accountPhotoURL,
 }: {
   uid: string | undefined
   /** Viewing someone else's public profile — no edits, no drag, view/sort/filter only. */
   readOnly?: boolean
+  /** The signed-in viewer's own avatar, shown next to the settings gear (owner view only). */
+  accountPhotoURL?: string | null
 }) {
   const { books, loading, rateBook, reorder } = useLibrary(uid)
   const { changeCover, resetCover, setFinishedDate, setFormat, removeBook, updateDetails } =
@@ -175,6 +178,7 @@ export function ReadGrid({
         onGridSizeChange={setGridSize}
         reorderMode={reorderMode}
         onExitReorderMode={() => setReorderMode(false)}
+        accountPhotoURL={readOnly ? undefined : accountPhotoURL}
       />
 
       {books.length === 0 ? (
@@ -214,7 +218,12 @@ export function ReadGrid({
               <h3 className="mb-1.5 px-1 text-sm font-semibold text-ink sm:px-1">{genre}</h3>
               <div className={groupGridClasses}>
                 {groupBooks.map((book) => (
-                  <CoverTile key={book.googleVolumeId} book={book} onClick={() => handleTileTap(book)} />
+                  <CoverTile
+                    key={book.googleVolumeId}
+                    book={book}
+                    onClick={() => handleTileTap(book)}
+                    showRating={readOnly}
+                  />
                 ))}
               </div>
             </div>
@@ -228,6 +237,7 @@ export function ReadGrid({
               book={book}
               onClick={() => handleTileTap(book)}
               onLongPress={reorderCapable ? () => setReorderMode(true) : undefined}
+              showRating={readOnly}
             />
           ))}
         </div>

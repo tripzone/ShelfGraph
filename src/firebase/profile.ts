@@ -1,15 +1,19 @@
 import {
   collection,
+  deleteDoc,
   doc,
   endAt,
   getDoc,
   getDocs,
   limit,
+  onSnapshot,
   orderBy,
   query,
   runTransaction,
+  serverTimestamp,
   setDoc,
   startAt,
+  Timestamp,
   where,
 } from 'firebase/firestore'
 import { db } from './config'
@@ -19,6 +23,10 @@ export interface PublicUser {
   username: string | null
   displayName: string | null
   photoURL: string | null
+}
+
+export interface PinnedUser extends PublicUser {
+  pinnedAt: string
 }
 
 export function toUsernameLower(username: string): string {
@@ -79,6 +87,45 @@ export async function searchPublicUsers(prefixLower: string, max = 10): Promise<
       photoURL: data.photoURL ?? null,
     }
   })
+}
+
+function pinnedUsersCol(uid: string) {
+  return collection(db, 'users', uid, 'pinnedUsers')
+}
+
+/** Pinned profiles surface under the Discover search bar without re-searching. */
+export function subscribeToPinnedUsers(uid: string, callback: (users: PinnedUser[]) => void) {
+  const q = query(pinnedUsersCol(uid), orderBy('pinnedAt', 'desc'))
+  return onSnapshot(q, (snap) => {
+    callback(
+      snap.docs.map((d) => {
+        const data = d.data()
+        return {
+          uid: d.id,
+          username: data.username ?? null,
+          displayName: data.displayName ?? null,
+          photoURL: data.photoURL ?? null,
+          pinnedAt:
+            data.pinnedAt instanceof Timestamp
+              ? data.pinnedAt.toDate().toISOString()
+              : new Date().toISOString(),
+        }
+      }),
+    )
+  })
+}
+
+export async function pinUser(uid: string, target: PublicUser): Promise<void> {
+  await setDoc(doc(pinnedUsersCol(uid), target.uid), {
+    username: target.username,
+    displayName: target.displayName,
+    photoURL: target.photoURL,
+    pinnedAt: serverTimestamp(),
+  })
+}
+
+export async function unpinUser(uid: string, targetUid: string): Promise<void> {
+  await deleteDoc(doc(pinnedUsersCol(uid), targetUid))
 }
 
 export async function getPublicProfileByUsername(username: string): Promise<PublicUser | null> {

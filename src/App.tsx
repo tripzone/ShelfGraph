@@ -1,4 +1,4 @@
-import { Link, Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { SearchBar } from './components/layout/SearchBar'
 import { TabBar } from './components/layout/TabBar'
 import { SignInScreen } from './components/auth/SignInScreen'
@@ -50,17 +50,8 @@ function AuthenticatedApp() {
   return (
     <div className="min-h-screen pb-16 sm:pb-0">
       <header className="sticky top-0 z-40 border-b border-hairline bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-3">
+        <div className="mx-auto flex max-w-3xl items-center px-4 py-3">
           <SearchBar uid={user.uid} />
-          <Link
-            to="/settings"
-            aria-label="Settings"
-            className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-hairline ring-1 ring-hairline transition-opacity hover:opacity-80"
-          >
-            {user.photoURL && (
-              <img src={user.photoURL} alt="" className="h-full w-full object-cover" />
-            )}
-          </Link>
         </div>
       </header>
 
@@ -69,7 +60,10 @@ function AuthenticatedApp() {
       <main className="pt-4">
         <Routes>
           <Route path="/" element={<Navigate to="/read" replace />} />
-          <Route path="/read" element={<ReadGrid uid={user.uid} />} />
+          <Route
+            path="/read"
+            element={<ReadGrid uid={user.uid} accountPhotoURL={user.photoURL} />}
+          />
           <Route path="/to-read" element={<QueueList uid={user.uid} />} />
           <Route path="/discover" element={<DiscoverPage uid={user.uid} />} />
           <Route path="/discover/stats" element={<StatsDetailPage />} />

@@ -11,9 +11,18 @@ interface CoverTileProps {
   onLongPress?: () => void
   wiggle?: boolean
   wiggleDelayMs?: number
+  /** Shows the owner's star rating as a badge on the cover (someone else's profile). */
+  showRating?: boolean
 }
 
-export function CoverTile({ book, onClick, onLongPress, wiggle, wiggleDelayMs = 0 }: CoverTileProps) {
+export function CoverTile({
+  book,
+  onClick,
+  onLongPress,
+  wiggle,
+  wiggleDelayMs = 0,
+  showRating,
+}: CoverTileProps) {
   const timerRef = useRef<number | null>(null)
   const startRef = useRef<{ x: number; y: number } | null>(null)
   const firedRef = useRef(false)
@@ -63,7 +72,7 @@ export function CoverTile({ book, onClick, onLongPress, wiggle, wiggleDelayMs = 
       onClick={handleClick}
       onContextMenu={(e) => e.preventDefault()}
       style={wiggle ? { animationDelay: `${wiggleDelayMs}ms` } : undefined}
-      className={`aspect-[2/3] w-full select-none overflow-hidden rounded-md bg-hairline shadow-sm transition-transform [-webkit-touch-callout:none] active:scale-[0.98] ${
+      className={`relative aspect-[2/3] w-full select-none overflow-hidden rounded-md bg-hairline shadow-sm transition-transform [-webkit-touch-callout:none] active:scale-[0.98] ${
         wiggle ? 'animate-[wiggle_0.25s_ease-in-out_infinite]' : ''
       }`}
     >
@@ -82,6 +91,11 @@ export function CoverTile({ book, onClick, onLongPress, wiggle, wiggleDelayMs = 
         <div className="flex h-full w-full items-center justify-center p-2 text-center text-[11px] text-muted">
           {book.title}
         </div>
+      )}
+      {showRating && book.rating != null && (
+        <span className="pointer-events-none absolute left-1 top-1 flex items-center gap-0.5 rounded-full bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+          ★ {book.rating}
+        </span>
       )}
     </button>
   )

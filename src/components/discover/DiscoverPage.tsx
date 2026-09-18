@@ -7,7 +7,7 @@ export function DiscoverPage({ uid }: { uid: string | undefined }) {
     <div className="divide-y divide-hairline pb-24">
       <RecommendationGrid uid={uid} />
       <StatsSection uid={uid} />
-      <FindUsersSection />
+      <FindUsersSection uid={uid} />
     </div>
   )
 }

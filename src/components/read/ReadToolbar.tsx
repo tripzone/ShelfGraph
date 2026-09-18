@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useTheme } from '../../hooks/useTheme'
 import type { GridSize } from '../../hooks/useGridSize'
 import type { BookFormat } from '../../types/book'
@@ -85,6 +86,8 @@ interface ReadToolbarProps {
   onGridSizeChange: (size: GridSize) => void
   reorderMode: boolean
   onExitReorderMode: () => void
+  /** The signed-in viewer's own avatar, shown next to the settings gear (owner view only). */
+  accountPhotoURL?: string | null
 }
 
 export function ReadToolbar({
@@ -100,6 +103,7 @@ export function ReadToolbar({
   onGridSizeChange,
   reorderMode,
   onExitReorderMode,
+  accountPhotoURL,
 }: ReadToolbarProps) {
   const [openMenu, setOpenMenu] = useState<'sort' | 'filter' | 'settings' | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -259,7 +263,19 @@ export function ReadToolbar({
         )}
       </div>
 
-      <div className="relative ml-auto">
+      <div className="ml-auto flex items-center gap-1">
+        {accountPhotoURL !== undefined && (
+          <Link
+            to="/settings"
+            aria-label="Settings"
+            className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-hairline ring-1 ring-hairline transition-opacity hover:opacity-80"
+          >
+            {accountPhotoURL && (
+              <img src={accountPhotoURL} alt="" className="h-full w-full object-cover" />
+            )}
+          </Link>
+        )}
+        <div className="relative">
         <button
           type="button"
           onClick={() => setOpenMenu((m) => (m === 'settings' ? null : 'settings'))}
@@ -320,6 +336,7 @@ export function ReadToolbar({
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   )

@@ -21,6 +21,10 @@ service cloud.firestore {
       match /recommendations/{bookId} {
         allow read, write: if isOwner(uid);
       }
+
+      match /pinnedUsers/{pinnedUid} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     // Uniqueness claim for usernames: doc id is the lowercased name, value is { uid }.
