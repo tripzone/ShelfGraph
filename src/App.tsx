@@ -6,7 +6,6 @@ import { ReadGrid } from './components/read/ReadGrid'
 import { QueueList } from './components/toread/QueueList'
 import { DiscoverPage } from './components/discover/DiscoverPage'
 import { StatsDetailPage } from './components/discover/StatsDetailPage'
-import { SettingsPage } from './components/settings/SettingsPage'
 import { PublicProfilePage } from './components/profile/PublicProfilePage'
 import { BottomSheet } from './components/search/BottomSheet'
 import { ToastHost } from './components/search/Toast'
@@ -60,14 +59,10 @@ function AuthenticatedApp() {
       <main className="pt-4">
         <Routes>
           <Route path="/" element={<Navigate to="/read" replace />} />
-          <Route
-            path="/read"
-            element={<ReadGrid uid={user.uid} accountPhotoURL={user.photoURL} />}
-          />
+          <Route path="/read" element={<ReadGrid uid={user.uid} />} />
           <Route path="/to-read" element={<QueueList uid={user.uid} />} />
           <Route path="/discover" element={<DiscoverPage uid={user.uid} />} />
           <Route path="/discover/stats" element={<StatsDetailPage />} />
-          <Route path="/settings" element={<SettingsPage uid={user.uid} />} />
           <Route path="*" element={<Navigate to="/read" replace />} />
         </Routes>
       </main>

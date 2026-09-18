@@ -15,6 +15,13 @@
   --color-surface: #ffffff;
   --color-accent: #16a34a;
   --color-accent-soft: #dcfce7;
+
+  /* Categorical series colors (reading-activity chart) — validated for CVD-safe
+     adjacent-pair separation via the dataviz palette validator. Order matters. */
+  --color-series-physical: #2a78d6;
+  --color-series-ebook: #eb6834;
+  --color-series-audio: #1baf7a;
+  --color-series-unknown: #eda100;
 }
 
 /* Every color above is a CSS variable, so re-pointing them here re-themes the whole
@@ -28,6 +35,11 @@
   --color-surface: #1c1c1c;
   --color-accent: #4ade80;
   --color-accent-soft: #14532d;
+
+  --color-series-physical: #3987e5;
+  --color-series-ebook: #d95926;
+  --color-series-audio: #199e70;
+  --color-series-unknown: #c98500;
 }
 
 html,

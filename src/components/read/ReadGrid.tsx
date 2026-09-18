@@ -36,13 +36,10 @@ function dateKey(book: UserBook): number {
 export function ReadGrid({
   uid,
   readOnly = false,
-  accountPhotoURL,
 }: {
   uid: string | undefined
   /** Viewing someone else's public profile — no edits, no drag, view/sort/filter only. */
   readOnly?: boolean
-  /** The signed-in viewer's own avatar, shown next to the settings gear (owner view only). */
-  accountPhotoURL?: string | null
 }) {
   const { books, loading, rateBook, reorder } = useLibrary(uid)
   const { changeCover, resetCover, setFinishedDate, setFormat, removeBook, updateDetails } =
@@ -178,7 +175,7 @@ export function ReadGrid({
         onGridSizeChange={setGridSize}
         reorderMode={reorderMode}
         onExitReorderMode={() => setReorderMode(false)}
-        accountPhotoURL={readOnly ? undefined : accountPhotoURL}
+        uid={readOnly ? undefined : uid}
       />
 
       {books.length === 0 ? (

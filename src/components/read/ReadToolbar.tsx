@@ -1,8 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useTheme } from '../../hooks/useTheme'
+import { useProfile } from '../../hooks/useProfile'
+import {
+  claimUsername,
+  isUsernameAvailable,
+  setProfilePublic,
+  toUsernameLower,
+} from '../../firebase/profile'
+import { signOutUser } from '../../firebase/auth'
 import type { GridSize } from '../../hooks/useGridSize'
 import type { BookFormat } from '../../types/book'
+
+const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 
 export type SortMode = 'custom' | 'title' | 'date' | 'genre'
 export type SortDirection = 'asc' | 'desc'
@@ -86,8 +95,8 @@ interface ReadToolbarProps {
   onGridSizeChange: (size: GridSize) => void
   reorderMode: boolean
   onExitReorderMode: () => void
-  /** The signed-in viewer's own avatar, shown next to the settings gear (owner view only). */
-  accountPhotoURL?: string | null
+  /** The signed-in owner's own uid — shows the Account section (owner view only). */
+  uid?: string
 }
 
 export function ReadToolbar({
@@ -103,11 +112,20 @@ export function ReadToolbar({
   onGridSizeChange,
   reorderMode,
   onExitReorderMode,
-  accountPhotoURL,
+  uid,
 }: ReadToolbarProps) {
   const [openMenu, setOpenMenu] = useState<'sort' | 'filter' | 'settings' | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const { theme, setTheme } = useTheme()
+
+  const { profile } = useProfile(uid)
+  const [usernameInput, setUsernameInput] = useState('')
+  const [usernameSeeded, setUsernameSeeded] = useState(false)
+  const [checking, setChecking] = useState(false)
+  const [availability, setAvailability] = useState<'available' | 'taken' | 'invalid' | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -118,6 +136,66 @@ export function ReadToolbar({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Seed the input once the profile has actually loaded, and only once —
+  // further edits are the user's own typing, not the live doc.
+  useEffect(() => {
+    if (!usernameSeeded && profile.username != null) {
+      setUsernameInput(profile.username)
+      setUsernameSeeded(true)
+    }
+  }, [usernameSeeded, profile.username])
+
+  useEffect(() => {
+    if (!uid) return
+    const trimmed = usernameInput.trim()
+    if (!trimmed || trimmed === profile.username) {
+      setAvailability(null)
+      return
+    }
+    const lower = toUsernameLower(trimmed)
+    if (!USERNAME_PATTERN.test(lower)) {
+      setAvailability('invalid')
+      return
+    }
+    setChecking(true)
+    const timer = setTimeout(async () => {
+      try {
+        const available = await isUsernameAvailable(lower, uid)
+        setAvailability(available ? 'available' : 'taken')
+      } finally {
+        setChecking(false)
+      }
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [usernameInput, uid, profile.username])
+
+  async function handleSaveUsername() {
+    if (!uid) return
+    const trimmed = usernameInput.trim()
+    if (!trimmed || availability !== 'available') return
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await claimUsername(uid, trimmed, profile.usernameLower)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Could not save that username.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleTogglePublic() {
+    if (!uid) return
+    await setProfilePublic(uid, !profile.isPublic)
+  }
+
+  const canSaveUsername =
+    usernameInput.trim().length > 0 &&
+    usernameInput.trim() !== profile.username &&
+    availability === 'available'
 
   if (reorderMode) {
     return (
@@ -264,17 +342,6 @@ export function ReadToolbar({
       </div>
 
       <div className="ml-auto flex items-center gap-1">
-        {accountPhotoURL !== undefined && (
-          <Link
-            to="/settings"
-            aria-label="Settings"
-            className="h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full bg-hairline ring-1 ring-hairline transition-opacity hover:opacity-80"
-          >
-            {accountPhotoURL && (
-              <img src={accountPhotoURL} alt="" className="h-full w-full object-cover" />
-            )}
-          </Link>
-        )}
         <div className="relative">
         <button
           type="button"
@@ -285,7 +352,7 @@ export function ReadToolbar({
           <SettingsIcon />
         </button>
         {openMenu === 'settings' && (
-          <div className="absolute right-0 top-full z-30 mt-1 w-48 rounded-lg border border-hairline bg-surface py-1 shadow-lg">
+          <div className="absolute right-0 top-full z-30 mt-1 w-64 rounded-lg border border-hairline bg-surface py-1 shadow-lg">
             <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
               Appearance
             </p>
@@ -334,6 +401,83 @@ export function ReadToolbar({
                 </button>
               ))}
             </div>
+
+            {uid && (
+              <>
+                <div className="my-1 border-t border-hairline" />
+
+                <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
+                  Username
+                </p>
+                <div className="px-3 pb-1.5 pt-0.5">
+                  <div className="flex gap-1.5">
+                    <input
+                      value={usernameInput}
+                      onChange={(e) => setUsernameInput(e.target.value)}
+                      placeholder="pick a username"
+                      className="w-full rounded-md border border-hairline bg-canvas px-2 py-1 text-xs text-ink placeholder:text-muted focus:border-ink focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveUsername()}
+                      disabled={!canSaveUsername || saving}
+                      className="shrink-0 rounded-full bg-ink px-2.5 py-1 text-xs font-semibold text-ink-inverse disabled:opacity-40"
+                    >
+                      {saving ? '…' : saved ? '✓' : 'Save'}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted">
+                    {checking && 'Checking…'}
+                    {!checking && availability === 'available' && (
+                      <span className="text-accent">Available</span>
+                    )}
+                    {!checking && availability === 'taken' && (
+                      <span className="text-red-600 dark:text-red-400">Already taken</span>
+                    )}
+                    {!checking && availability === 'invalid' && (
+                      <span className="text-red-600 dark:text-red-400">
+                        Lowercase letters, numbers, underscore; 3-20 chars
+                      </span>
+                    )}
+                    {saveError && <span className="text-red-600 dark:text-red-400">{saveError}</span>}
+                  </p>
+                </div>
+
+                <div className="my-1 border-t border-hairline" />
+
+                <div className="flex items-center justify-between px-3 py-1.5">
+                  <span className="text-xs font-medium text-ink">Public profile</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={profile.isPublic}
+                    onClick={() => void handleTogglePublic()}
+                    className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                      profile.isPublic ? 'bg-accent' : 'bg-hairline'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                        profile.isPublic ? 'translate-x-4' : 'translate-x-0.5'
+                      }`}
+                    />
+                  </button>
+                </div>
+                {profile.isPublic && profile.username && (
+                  <p className="px-3 pb-1 text-[11px] text-muted">/u/{profile.username}</p>
+                )}
+
+                <div className="my-1 border-t border-hairline" />
+
+                <button
+                  type="button"
+                  onClick={() => void signOutUser()}
+                  className="block w-full px-3 py-1.5 text-left text-sm text-ink hover:bg-canvas"
+                >
+                  Sign out
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
