@@ -13,7 +13,7 @@ import type { BookFormat } from '../../types/book'
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 
-export type SortMode = 'custom' | 'title' | 'date' | 'genre'
+export type SortMode = 'custom' | 'title' | 'date' | 'genre' | 'format'
 export type SortDirection = 'asc' | 'desc'
 
 const BASE_SORT_LABELS: Record<SortMode, string> = {
@@ -21,12 +21,20 @@ const BASE_SORT_LABELS: Record<SortMode, string> = {
   title: 'Title',
   date: 'Date Finished',
   genre: 'Genre',
+  format: 'Format',
 }
 
-const FORMAT_LABELS: Record<BookFormat, string> = {
+export const FORMAT_LABELS: Record<BookFormat, string> = {
   physical: 'Physical',
   ebook: 'Ebook',
   audio: 'Audio',
+}
+
+/** Format sort/group order — books with no format set ("TBD") sort last. */
+export const FORMAT_ORDER: (BookFormat | 'tbd')[] = ['physical', 'ebook', 'audio', 'tbd']
+
+export function formatLabel(format: BookFormat | null): string {
+  return format ? FORMAT_LABELS[format] : 'TBD'
 }
 
 const GRID_SIZE_LABELS: Record<GridSize, string> = {
@@ -103,10 +111,17 @@ interface LibraryToolbarProps {
   onExitReorderMode: () => void
   /** The signed-in owner's own uid — shows the Account section (owner view only). */
   uid?: string
-  /** Current value of this tab's "show page count" preference. */
-  pageCountEnabled?: boolean
-  /** Provided only for the owner (undefined in read-only/visitor view) — shows the toggle. */
-  onPageCountEnabledChange?: (enabled: boolean) => void
+  /** Current value of this tab's "show page count" preference — a viewer-local setting. */
+  pageCountEnabled: boolean
+  onPageCountEnabledChange: (enabled: boolean) => void
+  /** A second display toggle — "Show star ratings" (Read) or "Show relevancy score" (To-Read). */
+  secondaryToggleLabel?: string
+  secondaryToggleEnabled?: boolean
+  onSecondaryToggleChange?: (enabled: boolean) => void
+  /** A third display toggle — e.g. "Show relevancy score" on the Read tab, visitor view only. */
+  tertiaryToggleLabel?: string
+  tertiaryToggleEnabled?: boolean
+  onTertiaryToggleChange?: (enabled: boolean) => void
 }
 
 export function LibraryToolbar({
@@ -128,6 +143,12 @@ export function LibraryToolbar({
   uid,
   pageCountEnabled,
   onPageCountEnabledChange,
+  secondaryToggleLabel,
+  secondaryToggleEnabled,
+  onSecondaryToggleChange,
+  tertiaryToggleLabel,
+  tertiaryToggleEnabled,
+  onTertiaryToggleChange,
 }: LibraryToolbarProps) {
   const [openMenu, setOpenMenu] = useState<'sort' | 'filter' | 'settings' | 'profile' | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -421,28 +442,66 @@ export function LibraryToolbar({
               ))}
             </div>
 
-            {onPageCountEnabledChange && (
-              <>
-                <div className="my-1 border-t border-hairline" />
-                <div className="flex items-center justify-between px-3 py-1.5">
-                  <span className="text-xs font-medium text-ink">Show page count</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={pageCountEnabled}
-                    onClick={() => onPageCountEnabledChange(!pageCountEnabled)}
-                    className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-                      pageCountEnabled ? 'bg-accent' : 'bg-hairline'
+            <div className="my-1 border-t border-hairline" />
+            <div className="flex items-center justify-between px-3 py-1.5">
+              <span className="text-xs font-medium text-ink">Show page count</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={pageCountEnabled}
+                onClick={() => onPageCountEnabledChange(!pageCountEnabled)}
+                className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                  pageCountEnabled ? 'bg-accent' : 'bg-hairline'
+                }`}
+              >
+                <span
+                  className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                    pageCountEnabled ? 'translate-x-4' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {onSecondaryToggleChange && (
+              <div className="flex items-center justify-between px-3 py-1.5">
+                <span className="text-xs font-medium text-ink">{secondaryToggleLabel}</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={secondaryToggleEnabled}
+                  onClick={() => onSecondaryToggleChange(!secondaryToggleEnabled)}
+                  className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                    secondaryToggleEnabled ? 'bg-accent' : 'bg-hairline'
+                  }`}
+                >
+                  <span
+                    className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                      secondaryToggleEnabled ? 'translate-x-4' : 'translate-x-0'
                     }`}
-                  >
-                    <span
-                      className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                        pageCountEnabled ? 'translate-x-4' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </>
+                  />
+                </button>
+              </div>
+            )}
+
+            {onTertiaryToggleChange && (
+              <div className="flex items-center justify-between px-3 py-1.5">
+                <span className="text-xs font-medium text-ink">{tertiaryToggleLabel}</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={tertiaryToggleEnabled}
+                  onClick={() => onTertiaryToggleChange(!tertiaryToggleEnabled)}
+                  className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                    tertiaryToggleEnabled ? 'bg-accent' : 'bg-hairline'
+                  }`}
+                >
+                  <span
+                    className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                      tertiaryToggleEnabled ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
             )}
           </div>
         )}

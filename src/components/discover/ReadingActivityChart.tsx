@@ -7,7 +7,7 @@ const SERIES: { key: SeriesKey; label: string; varName: string }[] = [
   { key: 'physical', label: 'Physical', varName: '--color-series-physical' },
   { key: 'ebook', label: 'Ebook', varName: '--color-series-ebook' },
   { key: 'audio', label: 'Audio', varName: '--color-series-audio' },
-  { key: 'unknown', label: 'Unknown', varName: '--color-series-unknown' },
+  { key: 'unknown', label: 'TBD', varName: '--color-series-unknown' },
 ]
 
 const MIN_DATED_BOOKS = 2

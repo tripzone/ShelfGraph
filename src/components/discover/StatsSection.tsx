@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { type ReactNode, useState } from 'react'
 import { useLibrary } from '../../hooks/useLibrary'
 import { hasReadingActivityData, ReadingActivityChart } from './ReadingActivityChart'
+import { FormatMixBar, useFormatMix } from './FormatMixChart'
 
 function BooksIcon() {
   return (
@@ -38,20 +38,19 @@ function PagesIcon() {
   )
 }
 
-function CalendarIcon() {
+function ChevronIcon({ expanded }: { expanded: boolean }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.8}
+      strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="h-4 w-4"
+      className={`h-3.5 w-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`}
     >
-      <rect x="3" y="5" width="18" height="16" rx="2" />
-      <path d="M16 3v4M8 3v4M3 10h18" />
+      <path d="M6 9l6 6 6-6" />
     </svg>
   )
 }
@@ -66,11 +65,11 @@ function StatTile({
   label: string
 }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 rounded-xl bg-canvas px-2 py-3 text-center">
-      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-accent">
+    <div className="flex flex-col items-center gap-1 rounded-xl bg-canvas px-2 py-2.5 text-center">
+      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-soft text-accent">
         {icon}
       </span>
-      <span className="text-lg font-bold leading-none text-ink">{value}</span>
+      <span className="text-base font-bold leading-none text-ink">{value}</span>
       <span className="text-[11px] leading-none text-muted">{label}</span>
     </div>
   )
@@ -78,45 +77,44 @@ function StatTile({
 
 export function StatsSection({ uid }: { uid: string | undefined }) {
   const { books, loading } = useLibrary(uid)
-  const currentYear = new Date().getFullYear()
+  const [expanded, setExpanded] = useState(false)
   const totalPages = books.reduce((sum, b) => sum + (b.pageCount ?? 0), 0)
-  const readThisYear = books.filter((b) => b.finishedYear === currentYear).length
+  const formatMix = useFormatMix(books)
+  const showActivityChart = hasReadingActivityData(books)
 
   return (
     <section className="mx-auto max-w-3xl px-3 py-3 sm:px-4">
       <div className="flex items-center justify-between px-1">
         <h2 className="text-sm font-semibold text-ink">Stats</h2>
-        <Link
-          to="/discover/stats"
-          className="flex items-center gap-0.5 text-xs font-medium text-muted transition-colors hover:text-ink"
-        >
-          Details
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-3.5 w-3.5"
+        {showActivityChart && (
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            aria-expanded={expanded}
+            className="flex items-center gap-0.5 text-xs font-medium text-muted transition-colors hover:text-ink"
           >
-            <path d="M9 18l6-6-6-6" />
-          </svg>
-        </Link>
+            {expanded ? 'Less' : 'More'}
+            <ChevronIcon expanded={expanded} />
+          </button>
+        )}
       </div>
 
       {loading ? (
         <p className="mt-2 px-1 text-sm text-muted">Loading…</p>
       ) : (
         <div className="mt-2 rounded-2xl border border-hairline bg-surface p-4 shadow-sm">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <StatTile icon={<BooksIcon />} value={books.length} label="Books read" />
             <StatTile icon={<PagesIcon />} value={totalPages.toLocaleString()} label="Pages read" />
-            <StatTile icon={<CalendarIcon />} value={readThisYear} label={`In ${currentYear}`} />
           </div>
 
-          {hasReadingActivityData(books) && (
+          {formatMix.length > 0 && (
+            <div className="mt-3">
+              <FormatMixBar slices={formatMix} />
+            </div>
+          )}
+
+          {expanded && showActivityChart && (
             <div className="mt-4 border-t border-hairline pt-3">
               <ReadingActivityChart books={books} />
             </div>

@@ -65,14 +65,19 @@ export async function setProfilePublic(uid: string, isPublic: boolean): Promise<
   await setDoc(doc(db, 'users', uid), { isPublic }, { merge: true })
 }
 
-/** Read tab default: off. Applies to the owner's own view and to visitors on their public profile. */
-export async function setShowPageCountRead(uid: string, enabled: boolean): Promise<void> {
-  await setDoc(doc(db, 'users', uid), { showPageCountRead: enabled }, { merge: true })
-}
-
-/** To-Read tab default: on. Applies to the owner's own view and to visitors on their public profile. */
-export async function setShowPageCountToRead(uid: string, enabled: boolean): Promise<void> {
-  await setDoc(doc(db, 'users', uid), { showPageCountToRead: enabled }, { merge: true })
+/** Persists the owner's chosen sort so it's restored on refresh and on other devices. */
+export async function setSortPreference(
+  uid: string,
+  tab: 'read' | 'toRead',
+  mode: string,
+  direction: 'asc' | 'desc',
+): Promise<void> {
+  const field = tab === 'read' ? 'readSort' : 'toReadSort'
+  await setDoc(
+    doc(db, 'users', uid),
+    { [`${field}Mode`]: mode, [`${field}Direction`]: direction },
+    { merge: true },
+  )
 }
 
 export async function searchPublicUsers(prefixLower: string, max = 10): Promise<PublicUser[]> {

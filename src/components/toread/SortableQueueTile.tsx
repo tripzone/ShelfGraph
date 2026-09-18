@@ -15,12 +15,14 @@ export function SortableQueueTile({
   onClick,
   wiggleDelayMs,
   showPageCount,
+  showRelevancy,
 }: {
   book: UserBook
   position: number
   onClick: () => void
   wiggleDelayMs: number
   showPageCount?: boolean
+  showRelevancy?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: book.googleVolumeId,
@@ -41,6 +43,7 @@ export function SortableQueueTile({
         wiggle={!isDragging}
         wiggleDelayMs={wiggleDelayMs}
         showPageCount={showPageCount}
+        showRelevancy={showRelevancy}
       />
     </div>
   )

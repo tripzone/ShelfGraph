@@ -7,10 +7,12 @@ export interface OwnProfile {
   usernameLower: string | null
   isPublic: boolean
   photoURL: string | null
-  /** Read tab: show each cover's page-count density line. Off by default. */
-  showPageCountRead: boolean
-  /** To-Read tab: show each cover's page-count density bar. On by default. */
-  showPageCountToRead: boolean
+  /** Last sort mode/direction chosen on the Read tab — synced across devices. */
+  readSortMode: string | null
+  readSortDirection: 'asc' | 'desc'
+  /** Last sort mode/direction chosen on the To-Read tab — synced across devices. */
+  toReadSortMode: string | null
+  toReadSortDirection: 'asc' | 'desc'
 }
 
 const EMPTY_PROFILE: OwnProfile = {
@@ -18,16 +20,13 @@ const EMPTY_PROFILE: OwnProfile = {
   usernameLower: null,
   isPublic: false,
   photoURL: null,
-  showPageCountRead: false,
-  showPageCountToRead: true,
+  readSortMode: null,
+  readSortDirection: 'asc',
+  toReadSortMode: null,
+  toReadSortDirection: 'asc',
 }
 
-/**
- * Live view of a profile's fields (username, public/private, display prefs). `uid` is
- * whichever shelf is being shown — the signed-in user's own uid on their own tabs, or
- * another user's uid while viewing their public profile — so this doubles as the way
- * a visitor picks up that owner's display preferences (e.g. showPageCountRead).
- */
+/** Live view of the signed-in user's own profile fields (username, public/private). */
 export function useProfile(uid: string | undefined) {
   const [profile, setProfile] = useState<OwnProfile>(EMPTY_PROFILE)
   const [loading, setLoading] = useState(true)
@@ -46,8 +45,10 @@ export function useProfile(uid: string | undefined) {
         usernameLower: data?.usernameLower ?? null,
         isPublic: data?.isPublic ?? false,
         photoURL: data?.photoURL ?? null,
-        showPageCountRead: data?.showPageCountRead ?? false,
-        showPageCountToRead: data?.showPageCountToRead ?? true,
+        readSortMode: data?.readSortMode ?? null,
+        readSortDirection: data?.readSortDirection ?? 'asc',
+        toReadSortMode: data?.toReadSortMode ?? null,
+        toReadSortDirection: data?.toReadSortDirection ?? 'asc',
       })
       setLoading(false)
     })

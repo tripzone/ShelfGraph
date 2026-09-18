@@ -15,6 +15,8 @@ interface QueueTileProps {
   wiggleDelayMs?: number
   /** Shows the page-count row (icon, number, density bar) at the bottom. On by default. */
   showPageCount?: boolean
+  /** Shows the AI relevancy-match row at the bottom. On by default. */
+  showRelevancy?: boolean
 }
 
 export function QueueTile({
@@ -25,6 +27,7 @@ export function QueueTile({
   wiggle,
   wiggleDelayMs = 0,
   showPageCount = true,
+  showRelevancy = true,
 }: QueueTileProps) {
   const timerRef = useRef<number | null>(null)
   const startRef = useRef<{ x: number; y: number } | null>(null)
@@ -93,7 +96,7 @@ export function QueueTile({
         {position}
       </span>
 
-      {(showPageCount || book.propensityScore != null) && (
+      {(showPageCount || (showRelevancy && book.propensityScore != null)) && (
         <span className="pointer-events-none absolute inset-x-0 bottom-0 flex h-1/5 flex-col justify-center gap-0.5 bg-black/70 px-1.5">
           {showPageCount && (
             <span className="flex items-center gap-1.5">
@@ -121,7 +124,7 @@ export function QueueTile({
               </span>
             </span>
           )}
-          {book.propensityScore != null && (
+          {showRelevancy && book.propensityScore != null && (
             <span className="text-[10px] font-semibold leading-none text-white">
               {book.propensityScore}% Match
             </span>

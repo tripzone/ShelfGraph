@@ -5,7 +5,6 @@ import { SignInScreen } from './components/auth/SignInScreen'
 import { ReadGrid } from './components/read/ReadGrid'
 import { QueueList } from './components/toread/QueueList'
 import { DiscoverPage } from './components/discover/DiscoverPage'
-import { StatsDetailPage } from './components/discover/StatsDetailPage'
 import { PublicProfilePage } from './components/profile/PublicProfilePage'
 import { BottomSheet } from './components/search/BottomSheet'
 import { ToastHost } from './components/search/Toast'
@@ -62,7 +61,6 @@ function AuthenticatedApp() {
           <Route path="/read" element={<ReadGrid uid={user.uid} />} />
           <Route path="/to-read" element={<QueueList uid={user.uid} />} />
           <Route path="/discover" element={<DiscoverPage uid={user.uid} />} />
-          <Route path="/discover/stats" element={<StatsDetailPage />} />
           <Route path="*" element={<Navigate to="/read" replace />} />
         </Routes>
       </main>

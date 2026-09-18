@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   DndContext,
   PointerSensor,
@@ -10,15 +10,24 @@ import {
 import { SortableContext, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable'
 import { CoverTile } from './CoverTile'
 import { SortableCoverTile } from './SortableCoverTile'
-import { LibraryToolbar, type SortDirection, type SortMode } from '../shared/LibraryToolbar'
+import {
+  LibraryToolbar,
+  FORMAT_ORDER,
+  formatLabel,
+  type SortDirection,
+  type SortMode,
+} from '../shared/LibraryToolbar'
 import { DetailModal } from '../shared/DetailModal'
 import { useLibrary } from '../../hooks/useLibrary'
 import { useLibraryActions } from '../../hooks/useLibraryActions'
 import { useCatalogueGenres } from '../../hooks/useCatalogueGenres'
-import { useProfile } from '../../hooks/useProfile'
-import { setShowPageCountRead } from '../../firebase/profile'
+import { useDisplayPrefs } from '../../hooks/useDisplayPrefs'
 import { useGridSize, type GridSize } from '../../hooks/useGridSize'
+import { useProfile } from '../../hooks/useProfile'
+import { setSortPreference } from '../../firebase/profile'
 import type { BookFormat, UserBook } from '../../types/book'
+
+const READ_SORT_MODES: SortMode[] = ['custom', 'title', 'date', 'genre', 'format']
 
 const GRID_BASE_CLASSES = 'mx-auto grid max-w-3xl gap-1 px-1 pb-24 sm:gap-2 sm:px-4'
 const GROUP_GRID_BASE_CLASSES = 'grid gap-1 sm:gap-2'
@@ -49,6 +58,7 @@ export function ReadGrid({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sortMode, setSortMode] = useState<SortMode>('custom')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [sortSeeded, setSortSeeded] = useState(false)
   const [genreFilter, setGenreFilter] = useState<Set<string>>(new Set())
   const [formatFilter, setFormatFilter] = useState<Set<BookFormat>>(new Set())
   const [reorderMode, setReorderMode] = useState(false)
@@ -56,7 +66,24 @@ export function ReadGrid({
   const gridClasses = `${GRID_BASE_CLASSES} ${GRID_SIZE_CLASSES[gridSize]}`
   const groupGridClasses = `${GROUP_GRID_BASE_CLASSES} ${GRID_SIZE_CLASSES[gridSize]}`
   const catalogueGenres = useCatalogueGenres(uid)
-  const { profile } = useProfile(uid)
+  const { prefs, setPref } = useDisplayPrefs()
+  const { profile, loading: profileLoading } = useProfile(readOnly ? undefined : uid)
+
+  // Restore the owner's last-chosen sort once their profile loads, exactly once —
+  // synced via Firestore so it's the same on refresh and on other devices. A visitor's
+  // sort choice (readOnly) is never read from or written to the profile being viewed.
+  useEffect(() => {
+    if (readOnly || sortSeeded || profileLoading) return
+    if (profile.readSortMode && READ_SORT_MODES.includes(profile.readSortMode as SortMode)) {
+      setSortMode(profile.readSortMode as SortMode)
+      setSortDirection(profile.readSortDirection)
+    }
+    setSortSeeded(true)
+  }, [readOnly, sortSeeded, profileLoading, profile.readSortMode, profile.readSortDirection])
+  const pageCountKey = readOnly ? 'showPageCountReadOther' : 'showPageCountReadOwn'
+  const starRatingKey = readOnly ? 'showStarRatingReadOther' : 'showStarRatingReadOwn'
+  const pageCountEnabled = prefs[pageCountKey]
+  const starRatingEnabled = prefs[starRatingKey]
 
   const selected = books.find((b) => b.googleVolumeId === selectedId) ?? null
 
@@ -68,12 +95,12 @@ export function ReadGrid({
   const filtersActive = genreFilter.size > 0 || formatFilter.size > 0
 
   function handleSortModeChange(mode: SortMode) {
-    if (mode === sortMode) {
-      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
-      return
-    }
+    const nextDirection = mode === sortMode ? (sortDirection === 'asc' ? 'desc' : 'asc') : 'asc'
     setSortMode(mode)
-    setSortDirection('asc')
+    setSortDirection(nextDirection)
+    if (!readOnly && uid) {
+      void setSortPreference(uid, 'read', mode, nextDirection)
+    }
   }
 
   const visibleBooks = useMemo(() => {
@@ -101,6 +128,11 @@ export function ReadGrid({
             a.title.localeCompare(b.title),
         )
         break
+      case 'format': {
+        const keyOf = (b: UserBook) => FORMAT_ORDER.indexOf(b.format ?? 'tbd')
+        sorted.sort((a, b) => dir * (keyOf(a) - keyOf(b)) || a.title.localeCompare(b.title))
+        break
+      }
       case 'custom':
       default:
         // Ties (shared default `order`) fall back to add order until the user drags.
@@ -109,13 +141,14 @@ export function ReadGrid({
     return sorted
   }, [books, sortMode, sortDirection, genreFilter, formatFilter])
 
-  // Genre headings only make sense once the list is grouped/sorted by genre — grouping
-  // by iteration order works because visibleBooks is already sorted (genre, then title).
-  const genreGroups = useMemo(() => {
-    if (sortMode !== 'genre') return null
+  // Genre/Format headings only make sense once the list is grouped/sorted that way —
+  // grouping by iteration order works because visibleBooks is already sorted accordingly.
+  const groupedBooks = useMemo(() => {
+    if (sortMode !== 'genre' && sortMode !== 'format') return null
     const groups = new Map<string, UserBook[]>()
     for (const book of visibleBooks) {
-      const key = book.categories[0] || 'Uncategorized'
+      const key =
+        sortMode === 'genre' ? book.categories[0] || 'Uncategorized' : formatLabel(book.format)
       const group = groups.get(key)
       if (group) group.push(book)
       else groups.set(key, [book])
@@ -179,9 +212,15 @@ export function ReadGrid({
         reorderMode={reorderMode}
         onExitReorderMode={() => setReorderMode(false)}
         uid={readOnly ? undefined : uid}
-        pageCountEnabled={profile.showPageCountRead}
-        onPageCountEnabledChange={
-          !readOnly && uid ? (enabled) => setShowPageCountRead(uid, enabled) : undefined
+        pageCountEnabled={pageCountEnabled}
+        onPageCountEnabledChange={(enabled) => setPref(pageCountKey, enabled)}
+        secondaryToggleLabel="Show star ratings"
+        secondaryToggleEnabled={starRatingEnabled}
+        onSecondaryToggleChange={(enabled) => setPref(starRatingKey, enabled)}
+        tertiaryToggleLabel={readOnly ? 'Show relevancy score' : undefined}
+        tertiaryToggleEnabled={prefs.showRelevancyReadOther}
+        onTertiaryToggleChange={
+          readOnly ? (enabled) => setPref('showRelevancyReadOther', enabled) : undefined
         }
       />
 
@@ -210,25 +249,26 @@ export function ReadGrid({
                   book={book}
                   onClick={() => handleTileTap(book)}
                   wiggleDelayMs={(index % 4) * 30}
-                  showPageCount={profile.showPageCountRead}
+                  showPageCount={pageCountEnabled}
                 />
               ))}
             </div>
           </SortableContext>
         </DndContext>
-      ) : genreGroups ? (
+      ) : groupedBooks ? (
         <div className="mx-auto max-w-3xl px-1 pb-24 sm:px-4">
-          {genreGroups.map(([genre, groupBooks]) => (
-            <div key={genre} className="mb-6 last:mb-0">
-              <h3 className="mb-1.5 px-1 text-sm font-semibold text-ink sm:px-1">{genre}</h3>
+          {groupedBooks.map(([group, groupBooks]) => (
+            <div key={group} className="mb-6 last:mb-0">
+              <h3 className="mb-1.5 px-1 text-sm font-semibold text-ink sm:px-1">{group}</h3>
               <div className={groupGridClasses}>
                 {groupBooks.map((book) => (
                   <CoverTile
                     key={book.googleVolumeId}
                     book={book}
                     onClick={() => handleTileTap(book)}
-                    showRating={readOnly}
-                    showPageCount={profile.showPageCountRead}
+                    showRating={starRatingEnabled}
+                    showPageCount={pageCountEnabled}
+                    showRelevancy={readOnly && prefs.showRelevancyReadOther}
                   />
                 ))}
               </div>
@@ -243,8 +283,9 @@ export function ReadGrid({
               book={book}
               onClick={() => handleTileTap(book)}
               onLongPress={reorderCapable ? () => setReorderMode(true) : undefined}
-              showRating={readOnly}
-              showPageCount={profile.showPageCountRead}
+              showRating={starRatingEnabled}
+              showPageCount={pageCountEnabled}
+              showRelevancy={readOnly && prefs.showRelevancyReadOther}
             />
           ))}
         </div>
