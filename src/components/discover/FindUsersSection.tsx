@@ -49,7 +49,7 @@ function UserRow({
         onClick={onTogglePin}
         aria-label={pinned ? 'Unpin' : 'Pin'}
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors ${
-          pinned ? 'text-accent' : 'text-muted hover:text-ink'
+          pinned ? 'text-ink' : 'text-muted hover:text-ink'
         }`}
       >
         <PinIcon filled={pinned} />
@@ -103,14 +103,11 @@ export function FindUsersSection({ uid }: { uid: string | undefined }) {
       />
 
       {!query.trim() && pinnedUsers.length > 0 && (
-        <div className="mt-3">
-          <p className="px-1 text-xs font-semibold uppercase tracking-wide text-muted">Pinned</p>
-          <ul className="mt-1.5 overflow-hidden rounded-xl border border-hairline">
-            {pinnedUsers.map((user) => (
-              <UserRow key={user.uid} user={user} pinned onTogglePin={() => togglePin(user)} />
-            ))}
-          </ul>
-        </div>
+        <ul className="mt-3 overflow-hidden rounded-xl border border-hairline">
+          {pinnedUsers.map((user) => (
+            <UserRow key={user.uid} user={user} pinned onTogglePin={() => togglePin(user)} />
+          ))}
+        </ul>
       )}
 
       {loading && <p className="mt-3 px-1 text-sm text-muted">Searching…</p>}

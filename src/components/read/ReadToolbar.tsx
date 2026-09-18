@@ -268,7 +268,7 @@ export function ReadToolbar({
           <Link
             to="/settings"
             aria-label="Settings"
-            className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-hairline ring-1 ring-hairline transition-opacity hover:opacity-80"
+            className="h-3.5 w-3.5 shrink-0 overflow-hidden rounded-full bg-hairline ring-1 ring-hairline transition-opacity hover:opacity-80"
           >
             {accountPhotoURL && (
               <img src={accountPhotoURL} alt="" className="h-full w-full object-cover" />
