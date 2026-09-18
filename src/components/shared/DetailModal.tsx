@@ -306,21 +306,33 @@ export function DetailModal({
                 </>
               )}
 
-              {onRate && (
+              {(onRate || book.rating != null) && (
                 <div className="mt-3 flex gap-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => onRate(star)}
-                      aria-label={`Rate ${star} star`}
-                      className={`text-xl leading-none ${
-                        (book.rating ?? 0) >= star ? 'text-ink' : 'text-hairline'
-                      }`}
-                    >
-                      ★
-                    </button>
-                  ))}
+                  {[1, 2, 3, 4, 5].map((star) =>
+                    onRate ? (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => onRate(star)}
+                        aria-label={`Rate ${star} star`}
+                        className={`text-xl leading-none ${
+                          (book.rating ?? 0) >= star ? 'text-ink' : 'text-hairline'
+                        }`}
+                      >
+                        ★
+                      </button>
+                    ) : (
+                      <span
+                        key={star}
+                        aria-hidden="true"
+                        className={`text-xl leading-none ${
+                          (book.rating ?? 0) >= star ? 'text-ink' : 'text-hairline'
+                        }`}
+                      >
+                        ★
+                      </span>
+                    ),
+                  )}
                 </div>
               )}
 

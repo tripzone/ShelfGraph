@@ -2,8 +2,17 @@ import { useEffect, useState } from 'react'
 import { useProfile } from '../../hooks/useProfile'
 import { claimUsername, isUsernameAvailable, setProfilePublic, toUsernameLower } from '../../firebase/profile'
 import { signOutUser } from '../../firebase/auth'
+import { ReadGrid } from '../read/ReadGrid'
+import { QueueList } from '../toread/QueueList'
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
+
+type PreviewTab = 'read' | 'to-read'
+
+const PREVIEW_TABS: { id: PreviewTab; label: string }[] = [
+  { id: 'read', label: 'Read' },
+  { id: 'to-read', label: 'To-Read' },
+]
 
 export function SettingsPage({ uid }: { uid: string }) {
   const { profile, loading } = useProfile(uid)
@@ -13,6 +22,7 @@ export function SettingsPage({ uid }: { uid: string }) {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [previewTab, setPreviewTab] = useState<PreviewTab>('read')
 
   useEffect(() => {
     if (!loading) setUsernameInput(profile.username ?? '')
@@ -68,7 +78,8 @@ export function SettingsPage({ uid }: { uid: string }) {
     usernameInput.trim().length > 0 && usernameInput.trim() !== profile.username && availability === 'available'
 
   return (
-    <div className="mx-auto max-w-md px-4 pb-24 pt-2">
+    <div className="pb-24 pt-2">
+      <div className="mx-auto max-w-md px-4">
       <h1 className="text-lg font-semibold text-ink">Settings</h1>
 
       <section className="mt-6">
@@ -148,6 +159,41 @@ export function SettingsPage({ uid }: { uid: string }) {
           Sign out
         </button>
       </section>
+      </div>
+
+      <div className="mt-10 border-t border-hairline pt-6">
+        <div className="mx-auto max-w-3xl px-4">
+          <h2 className="text-sm font-semibold text-ink">Your shelf</h2>
+          <p className="mt-0.5 text-xs text-muted">
+            A preview of what your Read and To-Read tabs look like to others.
+          </p>
+          <div className="mt-3 flex gap-4 border-b border-hairline">
+            {PREVIEW_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setPreviewTab(tab.id)}
+                className={`relative pb-2 text-sm font-medium transition-colors ${
+                  previewTab === tab.id ? 'text-ink' : 'text-muted'
+                }`}
+              >
+                {tab.label}
+                {previewTab === tab.id && (
+                  <span className="absolute inset-x-0 -bottom-px h-[2px] bg-ink" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-3">
+          {previewTab === 'read' ? (
+            <ReadGrid uid={uid} readOnly />
+          ) : (
+            <QueueList uid={uid} readOnly />
+          )}
+        </div>
+      </div>
     </div>
   )
 }

@@ -7,16 +7,15 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import {
-  SortableContext,
-  arrayMove,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { QueueRow } from './QueueRow'
+import { SortableContext, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable'
+import { QueueTile } from './QueueTile'
+import { SortableQueueTile } from './SortableQueueTile'
 import { DetailModal } from '../shared/DetailModal'
 import { useQueue } from '../../hooks/useQueue'
 import { useLibraryActions } from '../../hooks/useLibraryActions'
 import { useCatalogueGenres } from '../../hooks/useCatalogueGenres'
+
+const GRID_CLASSES = 'mx-auto grid max-w-3xl grid-cols-3 gap-1 px-1 pb-24 sm:grid-cols-4 sm:gap-2 sm:px-4'
 
 export function QueueList({
   uid,
@@ -30,6 +29,7 @@ export function QueueList({
   const { moveToRead, removeBook, changeCover, resetCover, updateDetails } = useLibraryActions(uid)
   const catalogueGenres = useCatalogueGenres(uid)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [reorderMode, setReorderMode] = useState(false)
   const selected = books.find((b) => b.googleVolumeId === selectedId) ?? null
   const selectedIndex = selectedId ? books.findIndex((b) => b.googleVolumeId === selectedId) : -1
 
@@ -39,9 +39,18 @@ export function QueueList({
     if (nextBook) setSelectedId(nextBook.googleVolumeId)
   }
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-  )
+  // Reorder mode mirrors the Read grid: a long-press on a tile (handled in QueueTile,
+  // without ever touching touch-action or preventDefault) enters reorder mode, so a
+  // 2D drag is never ambiguous with vertical scrolling.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+
+  function handleTileTap(book: (typeof books)[number]) {
+    if (reorderMode) {
+      setReorderMode(false)
+      return
+    }
+    setSelectedId(book.googleVolumeId)
+  }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
@@ -68,44 +77,62 @@ export function QueueList({
 
   return (
     <>
-      <div className="mx-auto max-w-3xl pb-24">
-        {readOnly ? (
-          books.map((book) => (
-            <button
+      {reorderMode && (
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-1">
+          <p className="text-xs text-muted">Drag covers to reorder</p>
+          <button
+            type="button"
+            onClick={() => setReorderMode(false)}
+            className="rounded-full border border-hairline px-3 py-1 text-xs font-semibold text-ink"
+          >
+            Done
+          </button>
+        </div>
+      )}
+
+      {readOnly ? (
+        <div className={GRID_CLASSES}>
+          {books.map((book, index) => (
+            <QueueTile
               key={book.googleVolumeId}
+              book={book}
+              position={index + 1}
               onClick={() => setSelectedId(book.googleVolumeId)}
-              className="flex w-full items-center gap-3 border-b border-hairline px-2 py-3 text-left last:border-b-0"
-            >
-              <div className="h-[72px] w-12 shrink-0 overflow-hidden rounded bg-hairline">
-                {book.coverUrl && (
-                  <img src={book.coverUrl} alt="" className="h-full w-full object-cover" />
-                )}
-              </div>
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
-                {book.title}
-              </span>
-              <span className="shrink-0 text-xs text-muted">
-                {book.pageCount ? `${book.pageCount}p` : '—'}
-              </span>
-            </button>
-          ))
-        ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext
-              items={books.map((b) => b.googleVolumeId)}
-              strategy={verticalListSortingStrategy}
-            >
-              {books.map((book) => (
-                <QueueRow
+            />
+          ))}
+        </div>
+      ) : reorderMode ? (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext
+            items={books.map((b) => b.googleVolumeId)}
+            strategy={rectSortingStrategy}
+          >
+            <div className={GRID_CLASSES}>
+              {books.map((book, index) => (
+                <SortableQueueTile
                   key={book.googleVolumeId}
                   book={book}
-                  onClick={() => setSelectedId(book.googleVolumeId)}
+                  position={index + 1}
+                  onClick={() => handleTileTap(book)}
+                  wiggleDelayMs={(index % 4) * 30}
                 />
               ))}
-            </SortableContext>
-          </DndContext>
-        )}
-      </div>
+            </div>
+          </SortableContext>
+        </DndContext>
+      ) : (
+        <div className={GRID_CLASSES}>
+          {books.map((book, index) => (
+            <QueueTile
+              key={book.googleVolumeId}
+              book={book}
+              position={index + 1}
+              onClick={() => handleTileTap(book)}
+              onLongPress={() => setReorderMode(true)}
+            />
+          ))}
+        </div>
+      )}
 
       {selected && (
         <DetailModal

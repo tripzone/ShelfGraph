@@ -4,25 +4,25 @@ import type { UserBook } from '../../types/book'
 const LONG_PRESS_MS = 450
 const MOVE_CANCEL_PX = 10
 
-interface CoverTileProps {
+interface QueueTileProps {
   book: UserBook
+  /** 1-based position in the queue, shown as a badge on the cover. */
+  position: number
   onClick: () => void
   /** Held still for LONG_PRESS_MS without exceeding MOVE_CANCEL_PX — enters reorder mode. */
   onLongPress?: () => void
   wiggle?: boolean
   wiggleDelayMs?: number
-  /** Shows the owner's star rating as a badge on the cover (someone else's profile). */
-  showRating?: boolean
 }
 
-export function CoverTile({
+export function QueueTile({
   book,
+  position,
   onClick,
   onLongPress,
   wiggle,
   wiggleDelayMs = 0,
-  showRating,
-}: CoverTileProps) {
+}: QueueTileProps) {
   const timerRef = useRef<number | null>(null)
   const startRef = useRef<{ x: number; y: number } | null>(null)
   const firedRef = useRef(false)
@@ -45,8 +45,6 @@ export function CoverTile({
   }
 
   function handlePointerMove(e: React.PointerEvent) {
-    // Movement past this threshold means the user is scrolling, not holding —
-    // bail out without ever touching preventDefault, so native scroll is untouched.
     if (!startRef.current) return
     const dx = e.clientX - startRef.current.x
     const dy = e.clientY - startRef.current.y
@@ -55,8 +53,6 @@ export function CoverTile({
 
   function handleClick() {
     if (firedRef.current) {
-      // The long press already fired — swallow the trailing click so it doesn't
-      // also open the detail sheet.
       firedRef.current = false
       return
     }
@@ -77,9 +73,6 @@ export function CoverTile({
       }`}
     >
       {book.coverUrl ? (
-        // pointer-events-none so the touch target is always this button, never the
-        // <img> itself — both iOS and Android only show their native long-press
-        // "save/copy image" menu when the touch actually lands on an <img>/<a>.
         <img
           src={book.coverUrl}
           alt=""
@@ -92,18 +85,19 @@ export function CoverTile({
           {book.title}
         </div>
       )}
-      {showRating && book.rating != null && (
-        <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center gap-[1px] bg-black/70 py-1">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <span
-              key={star}
-              className={`text-xs leading-none ${star <= book.rating! ? 'text-white' : 'text-white/30'}`}
-            >
-              ★
-            </span>
-          ))}
+
+      <span className="pointer-events-none absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/80 text-[11px] font-bold leading-none text-white">
+        {position}
+      </span>
+
+      <span className="pointer-events-none absolute inset-x-0 bottom-0 flex h-1/4 flex-col items-center justify-center gap-0.5 bg-black/70 px-1 text-center">
+        <span className="text-[10px] font-semibold leading-none text-white">
+          {book.pageCount ? `${book.pageCount}p` : '—'}
         </span>
-      )}
+        <span className="text-[10px] font-semibold leading-none text-white">
+          {book.propensityScore != null ? `${book.propensityScore}% Match` : 'Scoring…'}
+        </span>
+      </span>
     </button>
   )
 }
